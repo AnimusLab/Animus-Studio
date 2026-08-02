@@ -1,0 +1,155 @@
+# ===========================
+# Core Web Framework
+# ===========================
+fastapi
+uvicorn
+starlette
+
+# ===========================
+# Validation & Config
+# ===========================
+pydantic
+pydantic-settings
+python-dotenv
+
+# ===========================
+# Database
+# ===========================
+sqlalchemy
+asyncpg
+alembic
+psycopg
+pgvector
+
+# ===========================
+# Redis
+# ===========================
+redis
+hiredis
+
+# ===========================
+# Authentication
+# ===========================
+python-jose
+passlib
+bcrypt
+
+# ===========================
+# HTTP
+# ===========================
+httpx
+requests
+aiohttp
+
+# ===========================
+# Logging
+# ===========================
+structlog
+loguru
+rich
+
+# ===========================
+# Utilities
+# ===========================
+orjson
+tenacity
+typing-extensions
+python-dateutil
+pytz
+
+# ===========================
+# File Handling
+# ===========================
+aiofiles
+python-multipart
+
+# ===========================
+# Search
+# ===========================
+duckduckgo-search
+feedparser
+beautifulsoup4
+html2text
+lxml
+
+# ===========================
+# Browser Automation
+# ===========================
+playwright
+
+# ===========================
+# AI Providers
+# ===========================
+openai
+anthropic
+groq
+google-generativeai
+
+# ===========================
+# Ollama
+# ===========================
+ollama
+
+# ===========================
+# Embeddings / ML
+# ===========================
+numpy
+scipy
+scikit-learn
+
+# ===========================
+# Images
+# ===========================
+pillow
+opencv-python
+
+# ===========================
+# Audio
+# ===========================
+soundfile
+kokoro-onnx
+pydub
+ffmpeg-python
+
+# ===========================
+# Video
+# ===========================
+moviepy
+yt-dlp
+
+# ===========================
+# Publishing
+# ===========================
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+
+# ===========================
+# Social APIs
+# ===========================
+tweepy
+linkedin-api
+
+# ===========================
+# Storage
+# ===========================
+boto3
+
+# ===========================
+# Background Tasks
+# ===========================
+celery
+
+# ===========================
+# Testing
+# ===========================
+pytest
+pytest-asyncio
+pytest-cov
+
+# ===========================
+# Development
+# ===========================
+watchfiles
+tqdm

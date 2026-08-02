@@ -1,0 +1,164 @@
+{
+  "mission_id": "mission_1785691466",
+  "job_id": "job_1785691466",
+  "spec": {
+    "topic": "Deterministic AI Agent Architectures",
+    "audience": "Software Engineers & AI Architects",
+    "tone": "authoritative",
+    "requires_approval": false
+  },
+  "brand_id": "AnimusLab",
+  "research_package": {
+    "research_brief": {
+      "topic": "AI-Driven Edge Computing: Optimizing Performance in Resource-Constrained Environments",
+      "summary": "This video explores how AI is revolutionizing edge computing by enabling efficient model deployment on low-power devices, balancing real-time processing needs with hardware limitations. It highlights breakthroughs in model compression, decentralized decision-making, and energy-aware optimization.",
+      "key_points": [
+        "Model compression techniques for edge AI deployment",
+        "Latency reduction through decentralized AI processing",
+        "Energy-efficient algorithm design for IoT devices",
+        "Case studies: AI in smart grids and industrial automation"
+      ],
+      "suggested_angle": "Focus on the technical engineering challenges of running complex AI models on edge devices with limited computational resources, contrasting with cloud-centric AI approaches",
+      "hook_idea": "Show a real-time demo of an AI-powered industrial sensor system that makes split-second decisions without cloud connectivity, emphasizing the criticality of edge AI in mission-critical scenarios",
+      "trending_score": 0.85,
+      "risk_score": 0.35,
+      "sources": [],
+      "confidence": 0.65
+    }
+  },
+  "script_package": {
+    "title": "AI-Driven Edge Computing: The Future of Resource Efficiency",
+    "hook": "What if we could process data instantly without cloud delays? Meet edge computing's AI revolution.",
+    "script": "Imagine a world where latency is eliminated and bandwidth is maximized. [PAUSE] Traditional cloud computing struggles with real-time demands and resource limits. [EMPHASIS] Enter AI-driven edge computing\u2014processing data at the source, not in distant servers. [PAUSE] AI optimizes local resources, reducing transmission costs and boosting efficiency. [EMPHASIS] From smart cities to industrial IoT, this paradigm shift delivers unmatched performance. [PAUSE] The future isn't cloud-centric\u2014it's edge-powered. [EMPHASIS] Stay ahead in the tech race.",
+    "sections": [
+      {
+        "heading": "The Cloud Limitation",
+        "content": "Cloud computing faces latency and bandwidth challenges in real-time applications."
+      },
+      {
+        "heading": "Edge Computing Breakthrough",
+        "content": "Processing data locally reduces transmission costs and improves response times."
+      },
+      {
+        "heading": "AI's Role in Optimization",
+        "content": "AI algorithms dynamically allocate resources, ensuring peak efficiency at the edge."
+      }
+    ],
+    "cta": "Subscribe for deeper dives into AI's transformative impact on tech infrastructure.",
+    "description": "Discover how AI-driven edge computing solves resource constraints while delivering real-time performance. Perfect for tech enthusiasts and industry professionals.",
+    "tags": [
+      "AI technology",
+      "edge computing",
+      "resource optimization",
+      "real-time processing"
+    ],
+    "estimated_duration_seconds": 60,
+    "word_count": 150
+  },
+  "voice_package": {
+    "audio_path": "outputs\\job_1785691466\\voice.mp3"
+  },
+  "render_package": {
+    "video_path": "D:\\Animus-Studio\\outputs\\job_1785691466\\final.mp4",
+    "duration": 33.58
+  },
+  "publishing_package": {
+    "title": "AI-Driven Edge Computing: The Future of Resource Efficiency",
+    "description": "Discover how AI-driven edge computing solves resource constraints while delivering real-time perform",
+    "tags": [
+      "AI",
+      "SoftwareEngineering",
+      "SystemArchitecture",
+      "Python",
+      "AI technology",
+      "edge computing",
+      "resource optimization",
+      "real-time processing"
+    ],
+    "visibility": "private"
+  },
+  "publishing_results": {
+    "youtube": {
+      "status": "failed",
+      "error": "No integration found for youtube (brand: AnimusLab)"
+    }
+  },
+  "events": [
+    {
+      "event_type": "mission.started",
+      "timestamp": 1785691466.2387924,
+      "detail": "Goal: Deterministic AI Agent Architectures (Brand: AnimusLab Engineering)"
+    },
+    {
+      "event_type": "research.started",
+      "timestamp": 1785691466.2387924,
+      "detail": ""
+    },
+    {
+      "event_type": "research.completed",
+      "timestamp": 1785691840.560196,
+      "detail": "Topic: None"
+    },
+    {
+      "event_type": "script.started",
+      "timestamp": 1785691840.560196,
+      "detail": ""
+    },
+    {
+      "event_type": "script.completed",
+      "timestamp": 1785691969.0762162,
+      "detail": "Title: AI-Driven Edge Computing: The Future of Resource Efficiency"
+    },
+    {
+      "event_type": "voice.started",
+      "timestamp": 1785691969.0762162,
+      "detail": "Narrator: kokoro:af_heart"
+    },
+    {
+      "event_type": "voice.completed",
+      "timestamp": 1785691985.1652598,
+      "detail": "Audio: outputs\\job_1785691466\\voice.mp3"
+    },
+    {
+      "event_type": "editor.started",
+      "timestamp": 1785691985.1652598,
+      "detail": ""
+    },
+    {
+      "event_type": "editor.completed",
+      "timestamp": 1785692071.1355617,
+      "detail": "Video: D:\\Animus-Studio\\outputs\\job_1785691466\\final.mp4"
+    },
+    {
+      "event_type": "metadata.generated",
+      "timestamp": 1785692071.1355617,
+      "detail": ""
+    },
+    {
+      "event_type": "metadata.package_created",
+      "timestamp": 1785692071.1365225,
+      "detail": "Visibility: private"
+    },
+    {
+      "event_type": "publish.started",
+      "timestamp": 1785692071.1365225,
+      "detail": "Platform: youtube (Private mode)"
+    },
+    {
+      "event_type": "publish.completed",
+      "timestamp": 1785692071.252966,
+      "detail": "Results: {'youtube': {'status': 'failed', 'error': 'No integration found for youtube (brand: AnimusLab)'}}"
+    },
+    {
+      "event_type": "mission.completed",
+      "timestamp": 1785692071.252966,
+      "detail": "Video rendered & dispatched"
+    }
+  ],
+  "artifacts": {
+    "audio_path": "outputs\\job_1785691466\\voice.mp3",
+    "video_path": "D:\\Animus-Studio\\outputs\\job_1785691466\\final.mp4"
+  },
+  "created_at": 1785692071.252966,
+  "completed_at": 1785692071.252966
+}

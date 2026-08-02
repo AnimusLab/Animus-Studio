@@ -1,0 +1,10 @@
+[tool.pyrefly]
+python-interpreter-path = "C:\\Users\\Tan\\miniconda3\\envs\\animus-studio\\python.exe"
+
+# Extra source roots so agents.*, backend.*, workflows.* all resolve
+search-path = [
+  "backend",
+  "agents",
+  "workflows",
+  ".",
+]

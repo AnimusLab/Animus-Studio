@@ -1,0 +1,19 @@
+{
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Windows",
+  "venvPath": "C:/Users/Tan/miniconda3/envs",
+  "venv": "animus-studio",
+  "include": [
+    "backend",
+    "agents",
+    "workflows",
+    "knowledge",
+    "memory"
+  ],
+  "extraPaths": [
+    "backend",
+    "agents",
+    "workflows"
+  ],
+  "typeCheckingMode": "basic"
+}

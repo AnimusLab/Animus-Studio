@@ -1,0 +1,24 @@
+python-interpreter-path = "C:\\Users\\Tan\\miniconda3\\envs\\animus-studio\\python.exe"
+python-version = "3.11"
+python-platform = "windows"
+
+# Explicitly point at the conda env site-packages
+# This overrides the bundled config's site-package-path = []
+site-package-path = [
+  "C:\\Users\\Tan\\miniconda3\\envs\\animus-studio\\Lib\\site-packages",
+]
+
+# Local source roots so agents.*, backend.*, workflows.*, knowledge.* resolve
+search-path = [
+  "backend",
+  "agents",
+  "workflows",
+  "knowledge",
+  ".",
+]
+
+project-excludes = [
+  "**/node_modules",
+  "**/__pycache__",
+  "**/.venv/**/*",
+]

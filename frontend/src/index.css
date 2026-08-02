@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-brand-50: #f0f4ff;
+  --color-brand-100: #e0ebff;
+  --color-brand-200: #c2d6ff;
+  --color-brand-300: #94b5ff;
+  --color-brand-400: #6090ff;
+  --color-brand-500: #3b6bff;
+  --color-brand-600: #1f47f5;
+  --color-brand-700: #1837e1;
+  --color-brand-800: #1930b6;
+  --color-brand-900: #1b2d8f;
+
+  --color-surface-900: #0a0a0f;
+  --color-surface-800: #111118;
+  --color-surface-700: #18181f;
+  --color-surface-600: #1e1e28;
+  --color-surface-500: #26263a;
+  --color-surface-400: #32324a;
+
+  --color-accent-purple: #9b59ff;
+  --color-accent-cyan: #00d4ff;
+  --color-accent-green: #00e5a0;
+  --color-accent-amber: #ffb347;
+  --color-accent-red: #ff4757;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: var(--color-surface-900);
+  color: #e8e8f0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-surface-800); }
+::-webkit-scrollbar-thumb { background: var(--color-surface-500); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-surface-400); }
+
+/* Glass card */
+.glass {
+  background: rgba(30, 30, 40, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #3b6bff 0%, #9b59ff 50%, #00d4ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.glow-brand {
+  box-shadow: 0 0 20px rgba(59, 107, 255, 0.3), 0 0 60px rgba(59, 107, 255, 0.1);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(155, 89, 255, 0.3);
+}
+
+/* Status badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge-active    { background: rgba(0, 229, 160, 0.12); color: #00e5a0; border: 1px solid rgba(0, 229, 160, 0.2); }
+.badge-pending   { background: rgba(255, 179, 71, 0.12); color: #ffb347; border: 1px solid rgba(255, 179, 71, 0.2); }
+.badge-running   { background: rgba(59, 107, 255, 0.12); color: #6090ff; border: 1px solid rgba(59, 107, 255, 0.2); }
+.badge-failed    { background: rgba(255, 71, 87, 0.12); color: #ff4757; border: 1px solid rgba(255, 71, 87, 0.2); }
+.badge-paused    { background: rgba(155, 89, 255, 0.12); color: #9b59ff; border: 1px solid rgba(155, 89, 255, 0.2); }
+
+/* Animated pulse dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Page transition */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Sidebar active nav */
+.nav-active {
+  background: linear-gradient(90deg, rgba(59, 107, 255, 0.15) 0%, transparent 100%);
+  border-left: 2px solid #3b6bff;
+  color: #6090ff;
+}
+
+/* Agent card shimmer on hover */
+.agent-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(59, 107, 255, 0.15);
+}
+
+/* Step pipeline indicator */
+.pipeline-step {
+  position: relative;
+}
+
+.pipeline-step::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -20px;
+  width: 20px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(59, 107, 255, 0.6), transparent);
+}
+
+.pipeline-step:last-child::after {
+  display: none;
+}
