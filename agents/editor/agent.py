@@ -1,100 +1,34 @@
 """
+agents/editor/agent.py
+
 Editor Agent v2 — Department: Production
 
-Converts audio tracks and structured scripts into high-quality branded videos:
-
-Visual Language & Production Architecture:
-  1. Branded Color Palette: Dark mode (#0b0f19 primary, #00f0ff neon cyan accent, #1a2236 card bg)
-  2. Scene Card Parsing: Title Intro Card, Section Header Banners, CTA Outro Card
-  3. Animated Progress Bar: Dynamic timeline progress indicator at bottom of 1080p frame
-  4. Subtitle Engine: Centered subtitle captions with black stroke outlines
-  5. AnimusLab Branding: Watermark logo badge in top right corner
-
-Output:
-  {"video_path": "outputs/<job_id>/final.mp4", "duration": 142.3}
+Renders 1080p video MP4 assemblies with:
+  1. Dark mode background canvas (#0b0f19)
+  2. Neon cyan animated progress bar (#00f0ff)
+  3. Safe-margin top header section banners (y=90, zero clipping)
+  4. Centered intro title card (y=360-440, zero clipping)
+  5. Optional closed captions / subtitles (burn_subtitles=False by default)
 """
 from __future__ import annotations
 
 import os
+import re
 import textwrap
 from pathlib import Path
 from typing import Any
 
 import structlog
-
 from agents.base import BaseAgent, AgentContext
 
 logger = structlog.get_logger()
-
-# Outputs directory — relative to project root
 OUTPUT_DIR = Path("outputs")
 
 
-class EditorAgent(BaseAgent):
-    name = "editor"
-    department = "production"
-
-    async def _run(self, context: AgentContext, input_data: dict[str, Any]) -> dict[str, Any]:
-        audio_path = context.get("audio_path", "")
-        script     = context.get("script", {})
-        brand      = context.brand
-        job_id     = context.job_id
-
-        if not audio_path or not Path(audio_path).exists():
-            self._log.error("editor.no_audio", audio_path=audio_path)
-            return {"error": "audio_path missing or file not found"}
-
-        self._log.info("editor.v2.assembling", job_id=job_id, audio=audio_path)
-
-        out_dir = OUTPUT_DIR / job_id
-        out_dir.mkdir(parents=True, exist_ok=True)
-        output_path = str((out_dir / "final.mp4").resolve())
-
-        try:
-            result = await _assemble_video(
-                audio_path=audio_path,
-                script=script,
-                brand=brand,
-                output_path=output_path,
-            )
-        except Exception as exc:
-            self._log.exception("editor.assembly_failed", error=str(exc))
-            return {"error": str(exc)}
-
-        context.set("video_path", output_path)
-        self._log.info("editor.v2.done", output=output_path, duration=result["duration"])
-        return result
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Core assembly — pure moviepy / Pillow, no async needed
-# ─────────────────────────────────────────────────────────────────────────────
-
-async def _assemble_video(
-    audio_path: str,
-    script: dict,
-    brand: dict,
-    output_path: str,
-) -> dict[str, Any]:
-    """
-    Runs the full moviepy v2 pipeline in a thread pool.
-    """
-    import asyncio
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None,
-        _assemble_blocking,
-        audio_path, script, brand, output_path,
-    )
-
-
 def _resolve_font(font_name: str = "Arial") -> str | None:
-    if os.path.exists(font_name):
-        return font_name
     win_fonts = r"C:\Windows\Fonts"
     if os.path.exists(win_fonts):
-        lower = font_name.lower()
-        if "bold" in lower:
+        if "Bold" in font_name:
             f = os.path.join(win_fonts, "arialbd.ttf")
         else:
             f = os.path.join(win_fonts, "arial.ttf")
@@ -103,153 +37,228 @@ def _resolve_font(font_name: str = "Arial") -> str | None:
     return None
 
 
+def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
+    hex_str = hex_str.lstrip("#")
+    if len(hex_str) == 6:
+        return tuple(int(hex_str[i : i + 2], 16) for i in (0, 2, 4))
+    return (11, 15, 25)
+
+
 def _set_pos(clip: Any, pos: Any) -> Any:
-    return clip.with_position(pos) if hasattr(clip, "with_position") else clip.set_position(pos)
+    if hasattr(clip, "with_position"):
+        return clip.with_position(pos)
+    elif hasattr(clip, "set_position"):
+        return clip.set_position(pos)
+    return clip
 
 
 def _set_dur(clip: Any, dur: float) -> Any:
-    return clip.with_duration(dur) if hasattr(clip, "with_duration") else clip.set_duration(dur)
+    if hasattr(clip, "with_duration"):
+        return clip.with_duration(dur)
+    elif hasattr(clip, "set_duration"):
+        return clip.set_duration(dur)
+    return clip
 
 
 def _set_start(clip: Any, start: float) -> Any:
-    return clip.with_start(start) if hasattr(clip, "with_start") else clip.set_start(start)
+    if hasattr(clip, "with_start"):
+        return clip.with_start(start)
+    elif hasattr(clip, "set_start"):
+        return clip.set_start(start)
+    return clip
+
+
+def _set_audio(video: Any, audio: Any) -> Any:
+    if hasattr(video, "with_audio"):
+        return video.with_audio(audio)
+    elif hasattr(video, "set_audio"):
+        return video.set_audio(audio)
+    return video
 
 
 def _set_opacity(clip: Any, opacity: float) -> Any:
-    return clip.with_opacity(opacity) if hasattr(clip, "with_opacity") else clip.set_opacity(opacity)
+    if hasattr(clip, "with_opacity"):
+        return clip.with_opacity(opacity)
+    elif hasattr(clip, "set_opacity"):
+        return clip.set_opacity(opacity)
+    return clip
 
 
-def _set_audio(clip: Any, audio: Any) -> Any:
-    return clip.with_audio(audio) if hasattr(clip, "with_audio") else clip.set_audio(audio)
+class EditorAgent(BaseAgent):
+    name = "editor"
+    department = "production"
+    produces = {"video_path"}
 
+    async def _run(self, rt_or_ctx: Any, spec_or_input: Any, exec_or_none: Any = None) -> dict[str, Any]:
+        if exec_or_none is not None:
+            exec_ctx = exec_or_none
+            script = exec_ctx.get("script", {})
+            brand = exec_ctx.get("brand", {})
+            audio_path = exec_ctx.get("audio_path", "")
+            job_id = exec_ctx.execution_id
+        else:
+            context = rt_or_ctx
+            input_data = spec_or_input or {}
+            script = context.get("script", input_data.get("script", {}))
+            brand = getattr(context, "brand", {}) or input_data.get("brand", {})
+            audio_path = context.get("audio_path", input_data.get("audio_path", ""))
+            job_id = getattr(context, "job_id", f"job_{int(os.times().system * 100)}")
 
-def _assemble_blocking(
-    audio_path: str,
-    script: dict,
-    brand: dict,
-    output_path: str,
-) -> dict[str, Any]:
-    """MoviePy v2 video assembly with scenes, progress bar, subtitles, and branding."""
-    try:
-        from moviepy import (
-            AudioFileClip,
-            ColorClip,
-            CompositeVideoClip,
-            TextClip,
-            VideoClip,
+        self._log.info("editor.v2.assembling", job_id=job_id, audio=audio_path)
+
+        out_dir = OUTPUT_DIR / job_id
+        out_dir.mkdir(parents=True, exist_ok=True)
+        output_path = str((out_dir / "final.mp4").resolve())
+
+        if not audio_path or not os.path.exists(audio_path):
+            self._log.warning("editor.v2.missing_audio", path=audio_path)
+            return {"video_path": "", "duration": 0.0}
+
+        # Check if burned subtitles are requested (default False for clean YouTube auto-captions)
+        burn_subtitles = input_data.get("burn_subtitles", False)
+
+        result = self._render_video_v2(
+            audio_path=audio_path,
+            script=script,
+            brand=brand,
+            output_path=output_path,
+            burn_subtitles=burn_subtitles,
         )
-    except ImportError:
-        from moviepy.editor import (
-            AudioFileClip,
-            ColorClip,
-            CompositeVideoClip,
-            TextClip,
-            VideoClip,
+
+        if hasattr(rt_or_ctx, "set"):
+            rt_or_ctx.set("video_path", result["video_path"])
+
+        return result
+
+    def _render_video_v2(
+        self,
+        audio_path: str,
+        script: dict[str, Any],
+        brand: dict[str, Any],
+        output_path: str,
+        burn_subtitles: bool = False,
+    ) -> dict[str, Any]:
+        try:
+            from moviepy import (
+                AudioFileClip,
+                ColorClip,
+                CompositeVideoClip,
+                TextClip,
+                VideoClip,
+            )
+        except ImportError:
+            from moviepy.editor import (
+                AudioFileClip,
+                ColorClip,
+                CompositeVideoClip,
+                TextClip,
+                VideoClip,
+            )
+
+        # ── 1. Load audio & setup 1080p canvas ──────────────────────
+        audio = AudioFileClip(audio_path)
+        duration = audio.duration
+        W, H = 1920, 1080
+        fps = 24
+
+        font_regular = _resolve_font(brand.get("font", "Arial"))
+        font_bold = _resolve_font(brand.get("font", "Arial-Bold"))
+
+        # ── 2. Background Canvas (#0b0f19 dark mode) ──────────────
+        bg_color = _hex_to_rgb(brand.get("primary_color", "#0b0f19"))
+        background = _set_dur(ColorClip(size=(W, H), color=bg_color), duration)
+
+        # ── 3. Animated Progress Bar (Cyan #00f0ff) ───────────────
+        def make_progress_frame(t: float):
+            import numpy as np
+            img = np.zeros((10, W, 3), dtype=np.uint8)
+            progress_w = int((t / max(duration, 0.1)) * W)
+            if progress_w > 0:
+                img[:, :progress_w, :] = [0, 240, 255]
+            return img
+
+        progress_bar = _set_pos(_set_dur(VideoClip(frame_function=make_progress_frame), duration), ("left", H - 10))
+
+        # ── 4. Title Intro Card (y=360-440 with safe margins) ─────
+        title = script.get("title", "Animus Studio Production")
+        title_clip = _set_dur(_set_pos(
+            TextClip(
+                text=textwrap.fill(title, 32),
+                font_size=60,
+                color="white",
+                font=font_bold,
+            ),
+            ("center", 420)
+        ), 3.5)
+
+        brand_badge = _set_dur(_set_pos(
+            TextClip(
+                text=f"// {brand.get('name', 'ANIMUSLAB ENGINEERING').upper()}",
+                font_size=26,
+                color="#00f0ff",
+                font=font_bold,
+            ),
+            ("center", 350)
+        ), 3.5)
+
+        if hasattr(title_clip, "crossfadein"):
+            title_clip = title_clip.crossfadein(0.4).crossfadeout(0.4)
+            brand_badge = brand_badge.crossfadein(0.4).crossfadeout(0.4)
+
+        # ── 5. Safe Section Header Banners (y=90, zero clipping) ─
+        section_clips = _build_section_headers(
+            sections=script.get("sections", []),
+            duration=duration,
+            w=W,
+            font=font_bold,
         )
 
-    # ── 1. Load audio ────────────────────────────────────────
-    audio    = AudioFileClip(audio_path)
-    duration = audio.duration
-    W, H     = 1920, 1080
-    fps      = 24
+        # ── 6. Subtitle Captions (Optional) ───────────────────────
+        subtitle_clips = []
+        if burn_subtitles:
+            subtitle_clips = _build_subtitle_clips(
+                text=script.get("script", script.get("body", "")),
+                duration=duration,
+                width=W,
+                color="white",
+                font=font_regular,
+            )
 
-    font_regular = _resolve_font(brand.get("font", "Arial"))
-    font_bold    = _resolve_font(brand.get("font", "Arial-Bold"))
+        # ── 7. Top Right Watermark (y=90, safe margin) ───────────
+        watermark_clip = _set_dur(_set_pos(_set_opacity(
+            TextClip(
+                text="ANIMUS STUDIO",
+                font_size=24,
+                color="#00f0ff",
+                font=font_bold,
+            ),
+            0.6
+        ), (W - 280, 90)), duration)
 
-    # ── 2. Background Canvas (#0b0f19 dark mode) ──────────────
-    bg_color = _hex_to_rgb(brand.get("primary_color", "#0b0f19"))
-    background = _set_dur(ColorClip(size=(W, H), color=bg_color), duration)
+        # ── 8. Composite Layers ───────────────────────────────────
+        layers = [
+            background,
+            progress_bar,
+            brand_badge,
+            title_clip,
+            *section_clips,
+            *subtitle_clips,
+            watermark_clip,
+        ]
+        video = _set_audio(CompositeVideoClip(layers, size=(W, H)), audio)
 
-    # ── 3. Animated Progress Bar (Cyan #00f0ff) ───────────────
-    def make_progress_frame(t: float):
-        import numpy as np
-        img = np.zeros((10, W, 3), dtype=np.uint8)
-        progress_w = int((t / max(duration, 0.1)) * W)
-        if progress_w > 0:
-            img[:, :progress_w, :] = [0, 240, 255]  # Neon Cyan RGB
-        return img
+        # ── 9. Render Final MP4 ───────────────────────────────────
+        video.write_videofile(
+            output_path,
+            fps=fps,
+            codec="libx264",
+            audio_codec="aac",
+            preset="ultrafast",
+            threads=4,
+            logger=None,
+        )
 
-    progress_bar = _set_pos(_set_dur(VideoClip(frame_function=make_progress_frame), duration), ("left", H - 10))
-
-    # ── 4. Title Intro Card (first 3.5 seconds) ───────────────
-    title = script.get("title", "Animus Studio Production")
-    title_clip = _set_dur(_set_pos(
-        TextClip(
-            text=textwrap.fill(title, 36),
-            font_size=64,
-            color="white",
-            font=font_bold,
-            size=(W - 240, None),
-        ),
-        ("center", 340)
-    ), 3.5)
-
-    brand_badge = _set_dur(_set_pos(
-        TextClip(
-            text=f"// {brand.get('name', 'ANIMUSLAB ENGINEERING').upper()}",
-            font_size=28,
-            color="#00f0ff",
-            font=font_bold,
-        ),
-        ("center", 260)
-    ), 3.5)
-
-    if hasattr(title_clip, "crossfadein"):
-        title_clip = title_clip.crossfadein(0.4).crossfadeout(0.4)
-        brand_badge = brand_badge.crossfadein(0.4).crossfadeout(0.4)
-
-    # ── 5. Section Header Banners ─────────────────────────────
-    section_clips = _build_section_headers(
-        sections=script.get("sections", []),
-        duration=duration,
-        w=W,
-        font=font_bold,
-    )
-
-    # ── 6. Subtitle Captions ──────────────────────────────────
-    subtitle_clips = _build_subtitle_clips(
-        text=script.get("script", script.get("body", "")),
-        duration=duration,
-        width=W,
-        color="white",
-        font=font_regular,
-    )
-
-    # ── 7. Top Right Watermark ────────────────────────────────
-    watermark_clip = _set_dur(_set_pos(_set_opacity(
-        TextClip(
-            text="ANIMUS STUDIO",
-            font_size=24,
-            color="#00f0ff",
-            font=font_bold,
-        ),
-        0.6
-    ), (W - 260, 40)), duration)
-
-    # ── 8. Composite Layers ───────────────────────────────────
-    layers = [
-        background,
-        progress_bar,
-        brand_badge,
-        title_clip,
-        *section_clips,
-        *subtitle_clips,
-        watermark_clip,
-    ]
-    video = _set_audio(CompositeVideoClip(layers, size=(W, H)), audio)
-
-    # ── 9. Render Final MP4 ───────────────────────────────────
-    video.write_videofile(
-        output_path,
-        fps=fps,
-        codec="libx264",
-        audio_codec="aac",
-        preset="ultrafast",
-        threads=4,
-        logger=None,
-    )
-
-    return {"video_path": output_path, "duration": round(duration, 2)}
+        return {"video_path": output_path, "duration": round(duration, 2)}
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -260,7 +269,7 @@ def _build_section_headers(
     w: int,
     font: str | None,
 ) -> list:
-    """Renders top section headers as the script transitions through topics."""
+    """Renders top section headers placed safely at y=90 (no top clipping)."""
     try:
         from moviepy import TextClip
     except ImportError:
@@ -285,7 +294,7 @@ def _build_section_headers(
                 color="#00f0ff",
                 font=font,
             ),
-            (100, 50)
+            (100, 90)  # Move y=90 for safe top margin
         ), start_t), max(slice_dur, 0.5))
 
         if hasattr(header_clip, "crossfadein"):
@@ -300,50 +309,37 @@ def _build_subtitle_clips(
     text: str,
     duration: float,
     width: int,
-    color: str = "white",
-    font: str | None = None,
+    color: str,
+    font: str | None,
 ) -> list:
-    """Split script text into clean 8-word caption cards with outline."""
+    """Renders optional bottom subtitles."""
     try:
         from moviepy import TextClip
     except ImportError:
         from moviepy.editor import TextClip
 
-    if not text:
+    # Strip bracketed directions
+    clean_text = re.sub(r"\[.*?\]|\(.*?\)", "", text).strip()
+    words = clean_text.split()
+    if not words:
         return []
 
-    words  = text.split()
-    chunks = [" ".join(words[i : i + 8]) for i in range(0, len(words), 8)]
-    n      = len(chunks)
-    if n == 0:
-        return []
+    chunk_size = 7
+    chunks = [" ".join(words[i : i + chunk_size]) for i in range(0, len(words), chunk_size)]
+    chunk_dur = duration / max(len(chunks), 1)
 
-    slice_dur = duration / n
     clips = []
-    for idx, chunk in enumerate(chunks):
-        start = idx * slice_dur
-        clip = _set_dur(_set_start(_set_pos(
+    for i, chunk in enumerate(chunks):
+        start_t = i * chunk_dur
+        txt_clip = _set_dur(_set_start(_set_pos(
             TextClip(
-                text=textwrap.fill(chunk, 45),
-                font_size=46,
+                text=chunk,
+                font_size=36,
                 color=color,
                 font=font,
-                size=(width - 240, None),
-                stroke_color="black",
-                stroke_width=2,
             ),
-            ("center", 780)
-        ), start), slice_dur)
+            ("center", 900)
+        ), start_t), max(chunk_dur - 0.1, 0.4))
+        clips.append(txt_clip)
 
-        if hasattr(clip, "crossfadein"):
-            clip = clip.crossfadein(0.15).crossfadeout(0.15)
-
-        clips.append(clip)
     return clips
-
-
-def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
-    h = hex_color.lstrip("#")
-    if len(h) != 6:
-        return (11, 15, 25)
-    return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]

@@ -68,19 +68,14 @@
   },
   "publishing_package": {
     "title": "The AI Engineering Paradox: Innovation vs. Reliability",
-    "description": "Explore the AI Engineering Paradox: How to balance innovation with system reliability in an era of rapid technological a",
+    "description": "Explore the AI Engineering Paradox: How to balance innovation with system reliability in an era of r",
     "tags": [
-      "AI",
-      "SoftwareEngineering",
-      "SystemArchitecture",
-      "Python",
       "AI Ethics",
       "Machine Learning",
       "System Reliability",
       "Innovation",
       "AI Engineering"
-    ],
-    "visibility": "private"
+    ]
   },
   "publishing_results": {
     "youtube": {
@@ -183,6 +178,46 @@
       "event_type": "alpha1.mission.completed",
       "timestamp": 1785741544.6435335,
       "detail": "Flagship video rendered & dispatched"
+    },
+    {
+      "event_type": "replay.started",
+      "timestamp": 1785762739.9546185,
+      "detail": "Replaying mission from stage: 'editor'"
+    },
+    {
+      "event_type": "editor.replay_started",
+      "timestamp": 1785762739.9546185,
+      "detail": ""
+    },
+    {
+      "event_type": "editor.replay_completed",
+      "timestamp": 1785762888.8335228,
+      "detail": "Video: D:\\Animus-Studio\\outputs\\job_alpha1_1785740691\\final.mp4"
+    },
+    {
+      "event_type": "thumbnail.replay_started",
+      "timestamp": 1785762888.8335228,
+      "detail": ""
+    },
+    {
+      "event_type": "thumbnail.replay_completed",
+      "timestamp": 1785762888.8696187,
+      "detail": "Thumbnail: D:\\Animus-Studio\\outputs\\job_alpha1_1785740691\\thumbnail.png"
+    },
+    {
+      "event_type": "publish.replay_started",
+      "timestamp": 1785762888.8696187,
+      "detail": ""
+    },
+    {
+      "event_type": "publish.replay_completed",
+      "timestamp": 1785762888.9613078,
+      "detail": "Results: {'youtube': {'status': 'failed', 'error': 'No integration found for youtube (brand: AnimusLab)'}}"
+    },
+    {
+      "event_type": "replay.completed",
+      "timestamp": 1785762888.9613078,
+      "detail": "Replay execution trace finished"
     }
   ],
   "artifacts": {
@@ -259,5 +294,5 @@
     }
   },
   "created_at": 1785741544.6435335,
-  "completed_at": 1785741544.6435335
+  "completed_at": 1785762888.9613078
 }

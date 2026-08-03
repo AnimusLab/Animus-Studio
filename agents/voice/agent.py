@@ -36,7 +36,10 @@ class VoiceAgent(BaseAgent):
             brand = getattr(context, "brand", {}) or {}
             voice_id = brand.get("voice_id")
 
-        text = script.get("script") or script.get("body", "")
+        import re
+        raw_text = script.get("script") or script.get("body", "")
+        # Remove stage directions and emotion tags like [PAUSE], (LAUGHTER), [EMPHASIS]
+        text = re.sub(r"\[.*?\]|\(.*?\)", "", raw_text).strip()
         if not text:
             self._log.error("voice.no_text")
             return {"error": "No script text found"}

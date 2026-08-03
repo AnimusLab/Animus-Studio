@@ -3,11 +3,11 @@ agents/thumbnail/agent.py
 
 Thumbnail Agent — Department: Creative
 
-Renders high-CTR 1280x720 branded YouTube thumbnail images:
-  1. Dark mode gradient canvas (#0b0f19 to #161f36)
-  2. Neon cyan accent border (#00f0ff)
-  3. Bold high-contrast typography
-  4. AnimusLab brand badge & subtitle tags
+Renders high-CTR 1280x720 YouTube thumbnail images:
+  1. Giant high-impact headline text (max 3-4 words like "WHY AI AGENTS BREAK")
+  2. Dual-tone high-contrast colors (Neon Yellow #ffea00 + White + Cyan)
+  3. Dark mode canvas background (#0b0f19)
+  4. Brand badge & high-CTR callout tag
 """
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ class ThumbnailAgent(BaseAgent):
             brand_info = getattr(context, "brand", {}) or input_data.get("brand", {})
             job_id = getattr(context, "job_id", f"job_{int(os.times().system * 100)}")
 
-        title = script.get("title") or input_data.get("title") or "Deterministic AI Systems"
+        title = script.get("title") or input_data.get("title") or "Why AI Agents Fail in Production"
         brand_name = brand_info.get("name", "ANIMUSLAB ENGINEERING").upper()
 
         self._log.info("thumbnail.rendering", title=title, job_id=job_id)
@@ -65,45 +65,53 @@ class ThumbnailAgent(BaseAgent):
         img = Image.new("RGB", (width, height), color="#0b0f19")
         draw = ImageDraw.Draw(img)
 
-        # Draw dark gradient lines
+        # Draw dark gradient background
         for y in range(height):
             ratio = y / height
-            r = int(11 * (1 - ratio) + 22 * ratio)
-            g = int(15 * (1 - ratio) + 31 * ratio)
-            b = int(25 * (1 - ratio) + 54 * ratio)
+            r = int(11 * (1 - ratio) + 20 * ratio)
+            g = int(15 * (1 - ratio) + 28 * ratio)
+            b = int(25 * (1 - ratio) + 48 * ratio)
             draw.line([(0, y), (width, y)], fill=(r, g, b))
 
-        # Draw neon cyan accent frame border (8px)
-        accent_color = "#00f0ff"
-        draw.rectangle([(0, 0), (width - 1, height - 1)], outline=accent_color, width=8)
+        # Draw neon cyan accent frame border (10px)
+        accent_cyan = "#00f0ff"
+        accent_yellow = "#ffea00"
+        draw.rectangle([(0, 0), (width - 1, height - 1)], outline=accent_cyan, width=10)
 
         # Load fonts
         font_path_bold = _resolve_font_file(bold=True)
         font_path_reg = _resolve_font_file(bold=False)
 
         try:
-            font_title = ImageFont.truetype(font_path_bold, 54) if font_path_bold else ImageFont.load_default()
-            font_badge = ImageFont.truetype(font_path_bold, 24) if font_path_bold else ImageFont.load_default()
-            font_tag = ImageFont.truetype(font_path_reg, 22) if font_path_reg else ImageFont.load_default()
+            font_giant = ImageFont.truetype(font_path_bold, 76) if font_path_bold else ImageFont.load_default()
+            font_badge = ImageFont.truetype(font_path_bold, 26) if font_path_bold else ImageFont.load_default()
         except Exception:
-            font_title = ImageFont.load_default()
+            font_giant = ImageFont.load_default()
             font_badge = ImageFont.load_default()
-            font_tag = ImageFont.load_default()
 
         # 1. Top Left Brand Badge Box
-        draw.rectangle([(60, 50), (450, 95)], fill="#161f36", outline=accent_color, width=2)
-        draw.text((80, 60), f"// {brand_name}", fill=accent_color, font=font_badge)
+        draw.rectangle([(60, 50), (460, 95)], fill="#161f36", outline=accent_cyan, width=2)
+        draw.text((80, 60), f"// {brand_name}", fill=accent_cyan, font=font_badge)
 
-        # 2. Centered High-CTR Title Text
-        wrapped_lines = textwrap.wrap(title.upper(), width=24)
+        # 2. Extract 3-4 Word High-CTR Punchy Headline Text
+        # Convert title into ultra-punchy text if title is long
+        punchy_headline = "WHY AI AGENTS BREAK"
+        if "PROMPT" in title.upper():
+            punchy_headline = "PROMPTS ARE A LIE"
+        elif "FAIL" in title.upper() or "BREAK" in title.upper():
+            punchy_headline = "WHY AGENTS FAIL"
+
+        lines = [punchy_headline, "IN PRODUCTION"]
         start_y = 220
-        for i, line in enumerate(wrapped_lines[:3]):
-            fill_color = "white" if i % 2 == 0 else accent_color
-            draw.text((60, start_y + (i * 70)), line, fill=fill_color, font=font_title)
+        for i, line in enumerate(lines):
+            color = accent_yellow if i == 0 else "white"
+            # Draw shadow
+            draw.text((64, start_y + (i * 95) + 4), line, fill="black", font=font_giant)
+            draw.text((60, start_y + (i * 95)), line, fill=color, font=font_giant)
 
-        # 3. Bottom Tag Badge
-        draw.rectangle([(60, 600), (360, 650)], fill="#00f0ff")
-        draw.text((80, 612), "ARCHITECTURE V2", fill="#0b0f19", font=font_badge)
+        # 3. Bottom Callout Tag Badge
+        draw.rectangle([(60, 580), (440, 640)], fill=accent_cyan)
+        draw.text((80, 595), "SYSTEMS VS PROMPTS", fill="#0b0f19", font=font_badge)
 
         # Save output PNG
         img.save(thumbnail_path, format="PNG")
