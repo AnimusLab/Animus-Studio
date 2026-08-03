@@ -67,17 +67,12 @@
     "title": "The Future of AI Engineering: Neuro-Symbolic Systems and Beyond",
     "description": "Explore how neuro-symbolic systems and emerging architectures are revolutionizing AI engineering. Di",
     "tags": [
-      "AI",
-      "SoftwareEngineering",
-      "SystemArchitecture",
-      "Python",
       "AI engineering",
       "neuro-symbolic AI",
       "AI future",
       "machine learning",
       "AI innovation"
-    ],
-    "visibility": "private"
+    ]
   },
   "publishing_results": {
     "youtube": {
@@ -155,12 +150,43 @@
       "event_type": "mission.completed",
       "timestamp": 1785695175.425049,
       "detail": "Video rendered & dispatched"
+    },
+    {
+      "event_type": "replay.started",
+      "timestamp": 1785732588.750351,
+      "detail": "Replaying mission from stage: 'thumbnail'"
+    },
+    {
+      "event_type": "thumbnail.replay_started",
+      "timestamp": 1785732588.750351,
+      "detail": ""
+    },
+    {
+      "event_type": "thumbnail.replay_completed",
+      "timestamp": 1785732588.7901855,
+      "detail": "Thumbnail: D:\\Animus-Studio\\outputs\\job_1785694565\\thumbnail.png"
+    },
+    {
+      "event_type": "publish.replay_started",
+      "timestamp": 1785732588.7901855,
+      "detail": ""
+    },
+    {
+      "event_type": "publish.replay_completed",
+      "timestamp": 1785732588.8571436,
+      "detail": "Results: {'youtube': {'status': 'failed', 'error': 'No integration found for youtube (brand: AnimusLab)'}}"
+    },
+    {
+      "event_type": "replay.completed",
+      "timestamp": 1785732588.8571436,
+      "detail": "Replay execution trace finished"
     }
   ],
   "artifacts": {
     "audio_path": "outputs\\job_1785694565\\voice.mp3",
-    "video_path": "D:\\Animus-Studio\\outputs\\job_1785694565\\final.mp4"
+    "video_path": "D:\\Animus-Studio\\outputs\\job_1785694565\\final.mp4",
+    "thumbnail_path": "D:\\Animus-Studio\\outputs\\job_1785694565\\thumbnail.png"
   },
   "created_at": 1785695175.425049,
-  "completed_at": 1785695175.425049
+  "completed_at": 1785732588.8571436
 }
