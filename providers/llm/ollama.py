@@ -126,7 +126,7 @@ class OllamaProvider(HealthCheckMixin, BaseLLMProvider):
         if json_mode:
             payload["format"] = "json"
 
-        timeout = float(os.getenv("OLLAMA_TIMEOUT", "300.0"))
+        timeout = float(os.getenv("OLLAMA_TIMEOUT", "600.0"))
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(f"{self.host}/api/chat", json=payload)
             resp.raise_for_status()

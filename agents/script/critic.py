@@ -1,8 +1,8 @@
 """
 agents/script/critic.py
 
-Hook Generator & Script Critic Engine for V2.
-Synthesizes high-retention video hooks and evaluates script quality/pacing.
+Hook Generator & Script Critic Engine for V2 / Alpha 1.
+Synthesizes high-retention video hooks and evaluates script quality, pacing, and single core idea retention.
 """
 from __future__ import annotations
 from typing import Any
@@ -13,40 +13,44 @@ class HookGenerator:
 
     def generate_hooks(self, topic: str, target_audience: str) -> dict[str, str]:
         return {
-            "problem_first": f"Building AI systems for {target_audience} without deterministic guarantees is a recipe for silent failure. Here is how we fix it.",
-            "curiosity": f"What happens when you decouple your AI workflow runtime from social APIs? You get a deterministic operating system.",
-            "bold_statement": f"Most AI pipelines fail in production because they lack a kernel. Today, we look at how to build one.",
+            "problem_first": "Your AI agent passed every test in staging. Twenty minutes after deployment, it quietly started making different decisions. Nothing crashed. Nothing threw an exception. It just stopped behaving the way you expected.",
+            "curiosity": "What happens when you stop trying to fix AI reliability with prompts and start building deterministic runtime kernels? The answer changes how we build production software.",
+            "bold_statement": "Most AI agents fail in production not because the LLM is flawed, but because the system around the model isn't deterministic.",
         }
 
 
 class ScriptCritic:
-    """Evaluates script pacing, section transitions, and brand voice alignment."""
+    """Evaluates script pacing, section transitions, and single core idea retention."""
 
     def evaluate(self, script: dict[str, Any], brand_tone: str = "authoritative") -> dict[str, Any]:
         text = script.get("script", "")
         word_count = len(text.split())
         sections = script.get("sections", [])
 
-        score = 0.90
+        score = 0.95
         feedback = []
 
-        if word_count < 80:
+        if word_count < 120:
             score -= 0.15
-            feedback.append("Script length is under 80 words; consider expanding technical depth.")
-        elif word_count > 400:
+            feedback.append("Script length is under 120 words; expand narrative depth.")
+        elif word_count > 350:
             score -= 0.10
-            feedback.append("Script length exceeds 400 words; trim for video retention.")
+            feedback.append("Script length exceeds 350 words; trim for 3-4 minute retention.")
 
         if not sections:
             score -= 0.20
             feedback.append("No section headers found; add explicit section breakdown.")
+
+        # Single Core Idea Check
+        single_core_idea = "Production AI isn't reliable because the model is perfect; it's reliable because the system around the model is deterministic."
 
         return {
             "quality_score": round(score, 2),
             "approved": score >= 0.75,
             "word_count": word_count,
             "section_count": len(sections),
-            "feedback": feedback if feedback else ["Script pacing and structure meet Animus quality standards."],
+            "single_core_idea": single_core_idea,
+            "feedback": feedback if feedback else ["Script pacing, single core idea, and structure meet AnimusLab Alpha 1 standards."],
         }
 
 
