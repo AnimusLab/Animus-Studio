@@ -8,7 +8,8 @@ Renders 1080p video MP4 assemblies with:
   2. Neon cyan animated progress bar (#00f0ff)
   3. Safe-margin top header section banners (y=90, zero clipping)
   4. Centered intro title card (y=360-440, zero clipping)
-  5. Optional closed captions / subtitles (burn_subtitles=False by default)
+  5. Dynamic Screen Activity (Terminal logs, Architecture diagrams, Code blocks, Telemetry cards)
+  6. Optional closed captions / subtitles (burn_subtitles=False by default)
 """
 from __future__ import annotations
 
@@ -20,6 +21,12 @@ from typing import Any
 
 import structlog
 from agents.base import BaseAgent, AgentContext
+from agents.editor.visuals import (
+    render_terminal_card,
+    render_architecture_card,
+    render_code_card,
+    render_metric_card,
+)
 
 logger = structlog.get_logger()
 OUTPUT_DIR = Path("outputs")
@@ -114,7 +121,6 @@ class EditorAgent(BaseAgent):
             self._log.warning("editor.v2.missing_audio", path=audio_path)
             return {"video_path": "", "duration": 0.0}
 
-        # Check if burned subtitles are requested (default False for clean YouTube auto-captions)
         burn_subtitles = input_data.get("burn_subtitles", False)
 
         result = self._render_video_v2(
@@ -122,6 +128,7 @@ class EditorAgent(BaseAgent):
             script=script,
             brand=brand,
             output_path=output_path,
+            job_id=job_id,
             burn_subtitles=burn_subtitles,
         )
 
@@ -136,6 +143,7 @@ class EditorAgent(BaseAgent):
         script: dict[str, Any],
         brand: dict[str, Any],
         output_path: str,
+        job_id: str,
         burn_subtitles: bool = False,
     ) -> dict[str, Any]:
         try:
@@ -143,6 +151,7 @@ class EditorAgent(BaseAgent):
                 AudioFileClip,
                 ColorClip,
                 CompositeVideoClip,
+                ImageClip,
                 TextClip,
                 VideoClip,
             )
@@ -151,6 +160,7 @@ class EditorAgent(BaseAgent):
                 AudioFileClip,
                 ColorClip,
                 CompositeVideoClip,
+                ImageClip,
                 TextClip,
                 VideoClip,
             )
@@ -213,7 +223,15 @@ class EditorAgent(BaseAgent):
             font=font_bold,
         )
 
-        # ── 6. Subtitle Captions (Optional) ───────────────────────
+        # ── 6. Dynamic Screen Activity Visual Cards (Terminal, Architecture, Code, Metrics) ───
+        visual_card_clips = _build_dynamic_visual_clips(
+            sections=script.get("sections", []),
+            duration=duration,
+            w=W,
+            job_id=job_id,
+        )
+
+        # ── 7. Subtitle Captions (Optional) ───────────────────────
         subtitle_clips = []
         if burn_subtitles:
             subtitle_clips = _build_subtitle_clips(
@@ -224,7 +242,7 @@ class EditorAgent(BaseAgent):
                 font=font_regular,
             )
 
-        # ── 7. Top Right Watermark (y=90, safe margin) ───────────
+        # ── 8. Top Right Watermark (y=90, safe margin) ───────────
         watermark_clip = _set_dur(_set_pos(_set_opacity(
             TextClip(
                 text="ANIMUS STUDIO",
@@ -235,19 +253,20 @@ class EditorAgent(BaseAgent):
             0.6
         ), (W - 280, 90)), duration)
 
-        # ── 8. Composite Layers ───────────────────────────────────
+        # ── 9. Composite Layers ───────────────────────────────────
         layers = [
             background,
             progress_bar,
             brand_badge,
             title_clip,
             *section_clips,
+            *visual_card_clips,
             *subtitle_clips,
             watermark_clip,
         ]
         video = _set_audio(CompositeVideoClip(layers, size=(W, H)), audio)
 
-        # ── 9. Render Final MP4 ───────────────────────────────────
+        # ── 10. Render Final MP4 ──────────────────────────────────
         video.write_videofile(
             output_path,
             fps=fps,
@@ -294,13 +313,68 @@ def _build_section_headers(
                 color="#00f0ff",
                 font=font,
             ),
-            (100, 90)  # Move y=90 for safe top margin
+            (100, 90)
         ), start_t), max(slice_dur, 0.5))
 
         if hasattr(header_clip, "crossfadein"):
             header_clip = header_clip.crossfadein(0.3).crossfadeout(0.3)
 
         clips.append(header_clip)
+
+    return clips
+
+
+def _build_dynamic_visual_clips(
+    sections: list[dict[str, Any]],
+    duration: float,
+    w: int,
+    job_id: str,
+) -> list:
+    """Renders dynamic high-context visual cards centered on screen for each section topic."""
+    try:
+        from moviepy import ImageClip
+    except ImportError:
+        from moviepy.editor import ImageClip
+
+    out_dir = OUTPUT_DIR / job_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    n = max(len(sections), 1)
+    slice_dur = (duration - 3.5) / n
+    clips = []
+
+    card_renderers = [
+        ("terminal.png", render_terminal_card),
+        ("architecture.png", lambda p, heading="": render_architecture_card(p)),
+        ("code.png", lambda p, heading="": render_code_card(p)),
+        ("metric.png", lambda p, heading="": render_metric_card(p)),
+    ]
+
+    for idx in range(n):
+        card_name, render_fn = card_renderers[idx % len(card_renderers)]
+        img_path = str(out_dir / card_name)
+        heading = sections[idx].get("heading", f"Section {idx + 1}") if sections else "Production System"
+
+        try:
+            if card_name == "terminal.png":
+                render_fn(img_path, heading)
+            else:
+                render_fn(img_path)
+
+            start_t = 3.5 + (idx * slice_dur)
+            dur = max(slice_dur - 0.2, 0.5)
+
+            card_clip = _set_dur(_set_start(_set_pos(
+                ImageClip(img_path),
+                ("center", 240)
+            ), start_t), dur)
+
+            if hasattr(card_clip, "crossfadein"):
+                card_clip = card_clip.crossfadein(0.3).crossfadeout(0.3)
+
+            clips.append(card_clip)
+        except Exception as err:
+            logger.warning("visuals.card_render_failed", card=card_name, error=str(err))
 
     return clips
 
@@ -318,7 +392,6 @@ def _build_subtitle_clips(
     except ImportError:
         from moviepy.editor import TextClip
 
-    # Strip bracketed directions
     clean_text = re.sub(r"\[.*?\]|\(.*?\)", "", text).strip()
     words = clean_text.split()
     if not words:
