@@ -35,6 +35,7 @@ from agents.editor.visuals import (
 )
 from agents.editor.stock_footage import get_stock_bg_clip
 from agents.editor.cinematic import render_letterbox_overlay
+from agents.editor.local_cinematic_pipeline import LocalCinematicPipeline
 
 logger = structlog.get_logger()
 OUTPUT_DIR = Path("outputs")
@@ -99,6 +100,10 @@ class EditorAgent(BaseAgent):
     department = "production"
     produces = {"video_path"}
 
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.pipeline = LocalCinematicPipeline()
+
     async def _run(self, rt_or_ctx: Any, spec_or_input: Any, exec_or_none: Any = None) -> dict[str, Any]:
         if exec_or_none is not None:
             exec_ctx = exec_or_none
@@ -126,13 +131,14 @@ class EditorAgent(BaseAgent):
 
         burn_subtitles = (spec_or_input or {}).get("burn_subtitles", False)
 
-        result = self._render_video_v3(
+        result = await self._render_video_v3(
             audio_path=audio_path,
             script=script,
             brand=brand,
             output_path=output_path,
             job_id=job_id,
             burn_subtitles=burn_subtitles,
+            spec_or_input=spec_or_input,
         )
 
         if hasattr(rt_or_ctx, "set"):
@@ -140,7 +146,7 @@ class EditorAgent(BaseAgent):
 
         return result
 
-    def _render_video_v3(
+    async def _render_video_v3(
         self,
         audio_path: str,
         script: dict[str, Any],
@@ -148,6 +154,7 @@ class EditorAgent(BaseAgent):
         output_path: str,
         job_id: str,
         burn_subtitles: bool = False,
+        spec_or_input: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         try:
             from moviepy import (
@@ -182,10 +189,12 @@ class EditorAgent(BaseAgent):
 
         # ── 2. Animated Video Backgrounds (Path A: Pexels / Path B: Procedural) ──
         self._log.info("editor.v3.rendering_animated_backgrounds", n_sections=n_sections)
-        bg_clips = _build_animated_bg_clips(
+        bg_clips = await _build_animated_bg_clips(
             sections=sections,
             duration=duration,
             out_dir=out_dir,
+            spec_or_input=spec_or_input,
+            pipeline=self.pipeline,
         )
 
         # ── 3. Animated Progress Bar ──────────────────────────────────
@@ -273,10 +282,12 @@ class EditorAgent(BaseAgent):
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _build_animated_bg_clips(
+async def _build_animated_bg_clips(
     sections: list[dict[str, Any]],
     duration: float,
     out_dir: Path,
+    spec_or_input: dict[str, Any] | None = None,
+    pipeline: LocalCinematicPipeline | None = None,
 ) -> list:
     """
     Builds animated video background clips for each section.
@@ -292,6 +303,12 @@ def _build_animated_bg_clips(
     section_dur = duration / n
     clips = []
 
+    spec = spec_or_input or {}
+    provider = spec.get("provider")
+    gen_params = spec.get("generation_parameters", {})
+    clip_id = spec.get("sequence_id", "clip_default")
+    prompt_string = gen_params.get("base_prompt")
+
     for idx in range(n):
         style = _SECTION_STYLES[idx % len(_SECTION_STYLES)]
         start_t = idx * section_dur
@@ -305,6 +322,31 @@ def _build_animated_bg_clips(
             style=style,
             duration=round(seg_dur, 2),
         )
+
+        if provider == "Ollama_CogVideoX_Local" and pipeline is not None and prompt_string:
+            try:
+                logger.info("editor.v3.local_cinematic_pipeline.generating", section=idx + 1, clip_id=clip_id)
+                output_clip_path = await pipeline.generate_clip(
+                    prompt=prompt_string,
+                    clip_id=f"{clip_id}_{idx + 1}",
+                    duration=int(gen_params.get("duration", 4)),
+                    resolution=gen_params.get("resolution", "768x512"),
+                    target_fps=int(gen_params.get("target_framerate", 24)),
+                    face_restore=bool(gen_params.get("face_restoration", True)),
+                )
+                logger.info("editor.v3.local_cinematic_pipeline.completed", section=idx + 1, path=str(output_clip_path))
+
+                bg_clip = VideoFileClip(str(output_clip_path), audio=False)
+                bg_clip = _set_dur(bg_clip, seg_dur)
+                bg_clip = _set_start(bg_clip, start_t)
+
+                if idx > 0 and hasattr(bg_clip, "crossfadein"):
+                    bg_clip = bg_clip.crossfadein(0.4)
+
+                clips.append(bg_clip)
+                continue
+            except Exception as e:
+                logger.error("editor.v3.local_cinematic_pipeline.failed", section=idx + 1, error=str(e))
 
         try:
             clip_path, source = get_stock_bg_clip(
