@@ -4,7 +4,7 @@ agents/editor/agent.py
 Editor Agent v2 — Department: Production
 
 Renders 1080p video MP4 assemblies with:
-  1. Dark mode background canvas (#0b0f19)
+  1. Dynamic Cinematic Background Scenes (Server alerts, Cybernetic blue grids, Teal matrix, Emerald shields)
   2. Neon cyan animated progress bar (#00f0ff)
   3. Pillow-padded text overlays (Zero top/bottom font clipping)
   4. Centered intro title card
@@ -28,6 +28,7 @@ from agents.editor.visuals import (
     render_code_card,
     render_metric_card,
 )
+from agents.editor.cinematic import render_cinematic_bg
 
 logger = structlog.get_logger()
 OUTPUT_DIR = Path("outputs")
@@ -162,12 +163,14 @@ class EditorAgent(BaseAgent):
         W, H = 1920, 1080
         fps = 24
 
-        # Fix spelling of 'Reliability' if present in title
         title = script.get("title", "Animus Studio Production").replace("Reliabilitv", "Reliability")
 
-        # ── 2. Background Canvas (#0b0f19 dark mode) ──────────────
-        bg_color = _hex_to_rgb(brand.get("primary_color", "#0b0f19"))
-        background = _set_dur(ColorClip(size=(W, H), color=bg_color), duration)
+        # ── 2. Dynamic Cinematic Background Clips ──────────────────
+        cinematic_bg_clips = _build_cinematic_bg_clips(
+            sections=script.get("sections", []),
+            duration=duration,
+            out_dir=out_dir,
+        )
 
         # ── 3. Animated Progress Bar (Cyan #00f0ff) ───────────────
         def make_progress_frame(t: float):
@@ -230,7 +233,7 @@ class EditorAgent(BaseAgent):
 
         # ── 8. Composite Layers ───────────────────────────────────
         layers = [
-            background,
+            *cinematic_bg_clips,
             progress_bar,
             brand_badge,
             title_clip,
@@ -256,6 +259,39 @@ class EditorAgent(BaseAgent):
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _build_cinematic_bg_clips(
+    sections: list[dict[str, Any]],
+    duration: float,
+    out_dir: Path,
+) -> list:
+    """Renders dynamic cinematic background scene visual clips per section topic."""
+    try:
+        from moviepy import ImageClip
+    except ImportError:
+        from moviepy.editor import ImageClip
+
+    styles = ["server_alert", "architecture_blue", "code_matrix", "audit_emerald"]
+    n = max(len(sections), 1)
+    slice_dur = duration / n
+    clips = []
+
+    for idx in range(n):
+        style = styles[idx % len(styles)]
+        bg_png = str(out_dir / f"cinematic_bg_{idx+1}.png")
+        render_cinematic_bg(bg_png, style_type=style)
+
+        start_t = idx * slice_dur
+        dur = slice_dur
+
+        bg_clip = _set_dur(_set_start(ImageClip(bg_png), start_t), dur)
+        if hasattr(bg_clip, "crossfadein") and idx > 0:
+            bg_clip = bg_clip.crossfadein(0.5)
+
+        clips.append(bg_clip)
+
+    return clips
+
 
 def _build_section_headers_padded(
     sections: list[dict[str, Any]],
