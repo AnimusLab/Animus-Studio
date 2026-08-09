@@ -4,12 +4,13 @@ agents/editor/agent.py
 Editor Agent v2 — Department: Production
 
 Renders 1080p video MP4 assemblies with:
-  1. Dynamic Cinematic Background Scenes (Server alerts, Cybernetic blue grids, Teal matrix, Emerald shields)
-  2. Neon cyan animated progress bar (#00f0ff)
-  3. Pillow-padded text overlays (Zero top/bottom font clipping)
-  4. Centered intro title card
-  5. Glassmorphic Cinematic Visual Cards (Terminal, Architecture, Code, Metrics)
-  6. Optional closed captions / subtitles (burn_subtitles=False by default)
+  1. Filmic S-Cinetone Atmospheric Background Scenes (Amber Alert, Cyber Blue, Teal Matrix, Emerald Shield)
+  2. 2.39:1 Widescreen Letterbox Scope Framing Overlay
+  3. Neon cyan animated progress bar (#00f0ff)
+  4. Pillow-padded text overlays (Zero top/bottom font clipping)
+  5. Centered intro title card
+  6. Glassmorphic Cinematic Visual Cards (Terminal, Architecture, Code, Metrics)
+  7. Optional closed captions / subtitles (burn_subtitles=False by default)
 """
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ from agents.editor.visuals import (
     render_code_card,
     render_metric_card,
 )
-from agents.editor.cinematic import render_cinematic_bg
+from agents.editor.cinematic import render_cinematic_bg, render_letterbox_overlay
 
 logger = structlog.get_logger()
 OUTPUT_DIR = Path("outputs")
@@ -165,7 +166,7 @@ class EditorAgent(BaseAgent):
 
         title = script.get("title", "Animus Studio Production").replace("Reliabilitv", "Reliability")
 
-        # ── 2. Dynamic Cinematic Background Clips ──────────────────
+        # ── 2. Dynamic Filmic Background Clips ─────────────────────
         cinematic_bg_clips = _build_cinematic_bg_clips(
             sections=script.get("sections", []),
             duration=duration,
@@ -181,7 +182,7 @@ class EditorAgent(BaseAgent):
                 img[:, :progress_w, :] = [0, 240, 255]
             return img
 
-        progress_bar = _set_pos(_set_dur(VideoClip(frame_function=make_progress_frame), duration), ("left", H - 10))
+        progress_bar = _set_pos(_set_dur(VideoClip(frame_function=make_progress_frame), duration), ("left", H - 70))
 
         # ── 4. Title Intro Card (Zero Clipping Pillow PNGs) ───────
         title_png = render_padded_text_png(
@@ -231,7 +232,11 @@ class EditorAgent(BaseAgent):
         )
         watermark_clip = _set_dur(_set_pos(_set_opacity(ImageClip(watermark_png), 0.6), (W - 280, 80)), duration)
 
-        # ── 8. Composite Layers ───────────────────────────────────
+        # ── 8. 2.39:1 Cinematic Widescreen Scope Letterbox ─────────
+        letterbox_png = render_letterbox_overlay(str(out_dir / "letterbox_scope.png"))
+        letterbox_clip = _set_dur(ImageClip(letterbox_png), duration)
+
+        # ── 9. Composite Layers ───────────────────────────────────
         layers = [
             *cinematic_bg_clips,
             progress_bar,
@@ -240,10 +245,11 @@ class EditorAgent(BaseAgent):
             *section_clips,
             *visual_card_clips,
             watermark_clip,
+            letterbox_clip,  # Top layer cinematic scope framing
         ]
         video = _set_audio(CompositeVideoClip(layers, size=(W, H)), audio)
 
-        # ── 9. Render Final MP4 (High Quality 1080p) ──────────────
+        # ── 10. Render Final MP4 (High Quality 1080p) ─────────────
         video.write_videofile(
             output_path,
             fps=fps,
