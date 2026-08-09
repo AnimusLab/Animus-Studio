@@ -1,16 +1,22 @@
 """
 agents/editor/agent.py
 
-Editor Agent v2 — Department: Production
+Editor Agent v3 — Cinematic Video Engine
 
 Renders 1080p video MP4 assemblies with:
-  1. Filmic S-Cinetone Atmospheric Background Scenes (Amber Alert, Cyber Blue, Teal Matrix, Emerald Shield)
-  2. 2.39:1 Widescreen Letterbox Scope Framing Overlay
-  3. Neon cyan animated progress bar (#00f0ff)
-  4. Pillow-padded text overlays (Zero top/bottom font clipping)
-  5. Centered intro title card
-  6. Rapid 3.2-Second Visual Scene Switching across 8 distinct glassmorphic templates
-  7. Optional closed captions / subtitles (burn_subtitles=False by default)
+  1. ANIMATED video backgrounds (procedural motion or Pexels stock footage)
+     - No more static images / poster-wallpaper backgrounds
+     - terminal_crash, network_topology, code_stream, particle_vortex per section
+  2. Broadcast-style Lower-Third HUD overlays (≤18% of frame)
+     - Background is FULLY visible for 82%+ of every frame
+  3. Cross-dissolve transitions between sections (0.4s fade)
+  4. Ken Burns slow-zoom simulation via progressive ffmpeg crop
+  5. 2.39:1 Widescreen Letterbox Scope Framing
+  6. Animated cyan progress bar
+  7. Optional closed captions (burn_subtitles=False by default)
+
+Path A (Pexels): Set PEXELS_API_KEY in .env → real stock footage with people/action
+Path B (Procedural): No API key needed → animated motion backgrounds auto-render
 """
 from __future__ import annotations
 
@@ -24,26 +30,28 @@ import structlog
 from agents.base import BaseAgent, AgentContext
 from agents.editor.visuals import (
     render_padded_text_png,
-    render_terminal_card,
-    render_architecture_card,
-    render_code_card,
-    render_metric_card,
-    render_callout_card,
-    render_comparison_card,
-    render_pipeline_card,
-    render_provenance_card,
+    render_lower_third,
+    render_corner_metric,
 )
-from agents.editor.cinematic import render_cinematic_bg, render_letterbox_overlay
+from agents.editor.stock_footage import get_stock_bg_clip
+from agents.editor.cinematic import render_letterbox_overlay
 
 logger = structlog.get_logger()
 OUTPUT_DIR = Path("outputs")
 
+# Section style mapping (determines which animation type each section gets)
+_SECTION_STYLES = ["server_alert", "architecture_blue", "code_matrix", "audit_emerald"]
 
-def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
-    hex_str = hex_str.lstrip("#")
-    if len(hex_str) == 6:
-        return tuple(int(hex_str[i : i + 2], 16) for i in (0, 2, 4))
-    return (11, 15, 25)
+# Lower-third accent colours per section
+_SECTION_ACCENTS = ["#ff3333", "#00ccff", "#00ff88", "#ffcc00"]
+
+# Corner metric badges per section (value, label, accent)
+_SECTION_METRICS = [
+    ("847", "Silent Failures/Day",  "#ff3333"),
+    ("0%",  "State Drift",          "#00ccff"),
+    ("100%","Audit Traceability",   "#00ff88"),
+    ("∞",   "Replay Integrity",     "#ffcc00"),
+]
 
 
 def _set_pos(clip: Any, pos: Any) -> Any:
@@ -106,19 +114,19 @@ class EditorAgent(BaseAgent):
             audio_path = context.get("audio_path", input_data.get("audio_path", ""))
             job_id = getattr(context, "job_id", f"job_{int(os.times().system * 100)}")
 
-        self._log.info("editor.v2.assembling", job_id=job_id, audio=audio_path)
+        self._log.info("editor.v3.assembling", job_id=job_id, audio=audio_path)
 
         out_dir = OUTPUT_DIR / job_id
         out_dir.mkdir(parents=True, exist_ok=True)
         output_path = str((out_dir / "final.mp4").resolve())
 
         if not audio_path or not os.path.exists(audio_path):
-            self._log.warning("editor.v2.missing_audio", path=audio_path)
+            self._log.warning("editor.v3.missing_audio", path=audio_path)
             return {"video_path": "", "duration": 0.0}
 
-        burn_subtitles = input_data.get("burn_subtitles", False)
+        burn_subtitles = (spec_or_input or {}).get("burn_subtitles", False)
 
-        result = self._render_video_v2(
+        result = self._render_video_v3(
             audio_path=audio_path,
             script=script,
             brand=brand,
@@ -132,7 +140,7 @@ class EditorAgent(BaseAgent):
 
         return result
 
-    def _render_video_v2(
+    def _render_video_v3(
         self,
         audio_path: str,
         script: dict[str, Any],
@@ -144,116 +152,111 @@ class EditorAgent(BaseAgent):
         try:
             from moviepy import (
                 AudioFileClip,
-                ColorClip,
+                VideoFileClip,
                 CompositeVideoClip,
                 ImageClip,
-                TextClip,
                 VideoClip,
+                concatenate_videoclips,
             )
         except ImportError:
             from moviepy.editor import (
                 AudioFileClip,
-                ColorClip,
+                VideoFileClip,
                 CompositeVideoClip,
                 ImageClip,
-                TextClip,
                 VideoClip,
+                concatenate_videoclips,
             )
 
         out_dir = OUTPUT_DIR / job_id
 
-        # ── 1. Load audio & setup 1080p canvas ──────────────────────
+        # ── 1. Audio ─────────────────────────────────────────────────
         audio = AudioFileClip(audio_path)
         duration = audio.duration
         W, H = 1920, 1080
         fps = 24
 
         title = script.get("title", "Animus Studio Production").replace("Reliabilitv", "Reliability")
+        sections = script.get("sections", [])
+        n_sections = max(len(sections), 1)
 
-        # ── 2. Dynamic Filmic Background Clips ─────────────────────
-        cinematic_bg_clips = _build_cinematic_bg_clips(
-            sections=script.get("sections", []),
+        # ── 2. Animated Video Backgrounds (Path A: Pexels / Path B: Procedural) ──
+        self._log.info("editor.v3.rendering_animated_backgrounds", n_sections=n_sections)
+        bg_clips = _build_animated_bg_clips(
+            sections=sections,
             duration=duration,
             out_dir=out_dir,
         )
 
-        # ── 3. Animated Progress Bar (Cyan #00f0ff) ───────────────
+        # ── 3. Animated Progress Bar ──────────────────────────────────
         def make_progress_frame(t: float):
             import numpy as np
-            img = np.zeros((10, W, 3), dtype=np.uint8)
-            progress_w = int((t / max(duration, 0.1)) * W)
-            if progress_w > 0:
-                img[:, :progress_w, :] = [0, 240, 255]
+            img = __import__("numpy").zeros((10, W, 3), dtype=__import__("numpy").uint8)
+            pw = int((t / max(duration, 0.1)) * W)
+            if pw > 0:
+                img[:, :pw, :] = [0, 240, 255]
             return img
 
-        progress_bar = _set_pos(_set_dur(VideoClip(frame_function=make_progress_frame), duration), ("left", H - 70))
+        import numpy as np
+        progress_bar = _set_pos(
+            _set_dur(VideoClip(frame_function=make_progress_frame), duration),
+            ("left", H - 10),
+        )
 
-        # ── 4. Title Intro Card (Zero Clipping Pillow PNGs) ───────
+        # ── 4. Intro Title (first 3.5s — full screen atmospheric, no card) ───
         title_png = render_padded_text_png(
             str(out_dir / "title_intro.png"),
-            textwrap.fill(title, 30),
-            font_size=54,
+            textwrap.fill(title, 32),
+            font_size=58,
             color="white",
             bold=True,
         )
         badge_png = render_padded_text_png(
             str(out_dir / "brand_badge.png"),
             f"// {brand.get('name', 'ANIMUSLAB ENGINEERING').upper()}",
-            font_size=26,
+            font_size=28,
             color="#00f0ff",
             bold=True,
         )
-
-        title_clip = _set_dur(_set_pos(ImageClip(title_png), ("center", 460)), 3.5)
-        brand_badge = _set_dur(_set_pos(ImageClip(badge_png), ("center", 390)), 3.5)
-
+        title_clip = _set_dur(_set_pos(ImageClip(title_png), ("center", 440)), 3.5)
+        brand_badge = _set_dur(_set_pos(ImageClip(badge_png), ("center", 370)), 3.5)
         if hasattr(title_clip, "crossfadein"):
-            title_clip = title_clip.crossfadein(0.4).crossfadeout(0.4)
-            brand_badge = brand_badge.crossfadein(0.4).crossfadeout(0.4)
+            title_clip = title_clip.crossfadein(0.5).crossfadeout(0.5)
+            brand_badge = brand_badge.crossfadein(0.5).crossfadeout(0.5)
 
-        # ── 5. Safe Section Header Banners (Pillow PNGs, Zero Clipping) ─
-        section_clips = _build_section_headers_padded(
-            sections=script.get("sections", []),
+        # ── 5. Lower-Third HUD Overlays (replaces opaque cards) ──────
+        self._log.info("editor.v3.rendering_lower_thirds")
+        lower_third_clips = _build_lower_third_clips(
+            sections=sections,
             duration=duration,
             out_dir=out_dir,
         )
 
-        # ── 6. Rapid 3.2-Second Dynamic Visual Scene Switching (8 Templates) ─
-        visual_card_clips = _build_dynamic_visual_clips(
-            sections=script.get("sections", []),
+        # ── 6. Corner Metric Badges ───────────────────────────────────
+        corner_badge_clips = _build_corner_badge_clips(
+            sections=sections,
             duration=duration,
-            w=W,
-            job_id=job_id,
+            out_dir=out_dir,
         )
 
-        # ── 7. Top Right Watermark (Pillow PNG, Zero Clipping) ────
-        watermark_png = render_padded_text_png(
-            str(out_dir / "watermark.png"),
-            "ANIMUS STUDIO",
-            font_size=24,
-            color="#00f0ff",
-            bold=True,
-        )
-        watermark_clip = _set_dur(_set_pos(_set_opacity(ImageClip(watermark_png), 0.6), (W - 280, 80)), duration)
-
-        # ── 8. 2.39:1 Cinematic Widescreen Scope Letterbox ─────────
+        # ── 7. 2.39:1 Letterbox Scope ─────────────────────────────────
         letterbox_png = render_letterbox_overlay(str(out_dir / "letterbox_scope.png"))
         letterbox_clip = _set_dur(ImageClip(letterbox_png), duration)
 
-        # ── 9. Composite Layers ───────────────────────────────────
+        # ── 8. Composite All Layers ────────────────────────────────────
         layers = [
-            *cinematic_bg_clips,
-            progress_bar,
-            brand_badge,
-            title_clip,
-            *section_clips,
-            *visual_card_clips,
-            watermark_clip,
-            letterbox_clip,
+            *bg_clips,          # Animated full-screen backgrounds (fills ~82%+ of frame)
+            progress_bar,       # Thin cyan bar at very bottom
+            brand_badge,        # Intro badge
+            title_clip,         # Intro title (atmospheric, no box)
+            *lower_third_clips, # Broadcast lower-thirds (≤18% of frame)
+            *corner_badge_clips,# Small corner metrics
+            letterbox_clip,     # 2.39:1 scope bars
         ]
         video = _set_audio(CompositeVideoClip(layers, size=(W, H)), audio)
 
-        # ── 10. Render Final MP4 (High Quality 1080p) ─────────────
+        # ── 9. Render Final MP4 ────────────────────────────────────────
+        self._log.info("editor.v3.writing_final_mp4", output=output_path)
         video.write_videofile(
             output_path,
             fps=fps,
@@ -270,45 +273,79 @@ class EditorAgent(BaseAgent):
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _build_cinematic_bg_clips(
+def _build_animated_bg_clips(
     sections: list[dict[str, Any]],
     duration: float,
     out_dir: Path,
 ) -> list:
-    """Renders dynamic cinematic background scene visual clips per section topic."""
+    """
+    Builds animated video background clips for each section.
+    Tries Pexels stock footage first (Path A), falls back to procedural (Path B).
+    Returns a list of VideoFileClip objects positioned as full-screen backgrounds.
+    """
     try:
-        from moviepy import ImageClip
+        from moviepy import VideoFileClip
     except ImportError:
-        from moviepy.editor import ImageClip
+        from moviepy.editor import VideoFileClip
 
-    styles = ["server_alert", "architecture_blue", "code_matrix", "audit_emerald"]
     n = max(len(sections), 1)
-    slice_dur = duration / n
+    section_dur = duration / n
     clips = []
 
     for idx in range(n):
-        style = styles[idx % len(styles)]
-        bg_png = str(out_dir / f"cinematic_bg_{idx+1}.png")
-        render_cinematic_bg(bg_png, style_type=style)
+        style = _SECTION_STYLES[idx % len(_SECTION_STYLES)]
+        start_t = idx * section_dur
+        seg_dur = section_dur
 
-        start_t = idx * slice_dur
-        dur = slice_dur
+        out_path = str(out_dir / f"bg_animated_{idx + 1}.mp4")
 
-        bg_clip = _set_dur(_set_start(ImageClip(bg_png), start_t), dur)
-        if hasattr(bg_clip, "crossfadein") and idx > 0:
-            bg_clip = bg_clip.crossfadein(0.5)
+        logger.info(
+            "editor.v3.bg_rendering",
+            section=idx + 1,
+            style=style,
+            duration=round(seg_dur, 2),
+        )
 
-        clips.append(bg_clip)
+        try:
+            clip_path, source = get_stock_bg_clip(
+                section_type=style,
+                duration=seg_dur,
+                output_path=out_path,
+            )
+            logger.info("editor.v3.bg_ready", section=idx + 1, source=source, path=clip_path)
+
+            bg_clip = VideoFileClip(clip_path, audio=False)
+            bg_clip = _set_dur(bg_clip, seg_dur)
+            bg_clip = _set_start(bg_clip, start_t)
+
+            # Cross-dissolve in (except first section)
+            if idx > 0 and hasattr(bg_clip, "crossfadein"):
+                bg_clip = bg_clip.crossfadein(0.4)
+
+            clips.append(bg_clip)
+
+        except Exception as err:
+            logger.warning("editor.v3.bg_failed", section=idx + 1, error=str(err))
+            # Emergency fallback: solid color
+            try:
+                from moviepy import ColorClip
+            except ImportError:
+                from moviepy.editor import ColorClip
+            clips.append(_set_dur(_set_start(ColorClip((1920, 1080), color=(5, 8, 15)), start_t), seg_dur))
 
     return clips
 
 
-def _build_section_headers_padded(
+def _build_lower_third_clips(
     sections: list[dict[str, Any]],
     duration: float,
     out_dir: Path,
 ) -> list:
-    """Renders top section headers as Pillow PNGs placed safely at y=80 with 0% top clipping."""
+    """
+    Renders broadcast lower-third HUD strips for each section.
+    Each strip appears ~0.5s after section starts, fades out before next section.
+    Covers ≤18% of frame height — background is fully visible above.
+    """
     try:
         from moviepy import ImageClip
     except ImportError:
@@ -318,87 +355,85 @@ def _build_section_headers_padded(
         return []
 
     n = len(sections)
-    slice_dur = (duration - 3.5) / max(n, 1)
+    section_dur = (duration - 3.5) / max(n, 1)
     clips = []
 
     for idx, sec in enumerate(sections):
         heading = sec.get("heading", f"Section {idx + 1}")
-        start_t = 3.5 + (idx * slice_dur)
-        text_str = f"SECTION 0{idx + 1} // {heading.upper()}"
-        png_path = str(out_dir / f"header_sec_{idx+1}.png")
+        title_str = f"SECTION {idx + 1:02d}  //  {heading.upper()}"
 
-        render_padded_text_png(
+        # Subtitle: first sentence of content (up to ~70 chars)
+        content = sec.get("content", sec.get("narration", ""))
+        subtitle = content[:70].rsplit(" ", 1)[0] + "…" if len(content) > 70 else content
+
+        accent = _SECTION_ACCENTS[idx % len(_SECTION_ACCENTS)]
+        png_path = str(out_dir / f"lower_third_{idx + 1}.png")
+
+        render_lower_third(
             png_path,
-            text_str,
-            font_size=24,
-            color="#00f0ff",
-            bold=True,
+            title=title_str,
+            subtitle=subtitle,
+            accent_color=accent,
         )
 
-        header_clip = _set_dur(_set_start(_set_pos(ImageClip(png_path), (80, 80)), start_t), max(slice_dur, 0.5))
+        start_t = 3.5 + (idx * section_dur) + 0.5   # Slight delay after section start
+        lt_dur = max(section_dur - 1.2, 2.0)         # Fade out before section end
 
-        if hasattr(header_clip, "crossfadein"):
-            header_clip = header_clip.crossfadein(0.3).crossfadeout(0.3)
+        lt_clip = _set_dur(
+            _set_start(ImageClip(png_path), start_t),
+            lt_dur,
+        )
+        if hasattr(lt_clip, "crossfadein"):
+            lt_clip = lt_clip.crossfadein(0.4).crossfadeout(0.4)
 
-        clips.append(header_clip)
+        clips.append(lt_clip)
 
     return clips
 
 
-def _build_dynamic_visual_clips(
+def _build_corner_badge_clips(
     sections: list[dict[str, Any]],
     duration: float,
-    w: int,
-    job_id: str,
+    out_dir: Path,
 ) -> list:
-    """Renders rapid 3.2-second visual scene cuts across 8 distinct visual card templates."""
+    """
+    Renders small corner metric badges that appear after lower-thirds settle.
+    These give the viewer a data point relevant to each section (847 failures,
+    0% drift, 100% audit, etc.) without covering the background.
+    """
     try:
         from moviepy import ImageClip
     except ImportError:
         from moviepy.editor import ImageClip
 
-    out_dir = OUTPUT_DIR / job_id
-    out_dir.mkdir(parents=True, exist_ok=True)
+    if not sections:
+        return []
 
-    card_renderers = [
-        ("terminal.png", render_terminal_card),
-        ("architecture.png", lambda p: render_architecture_card(p)),
-        ("comparison.png", lambda p: render_comparison_card(p)),
-        ("code.png", lambda p: render_code_card(p)),
-        ("callout.png", lambda p: render_callout_card(p)),
-        ("metric.png", lambda p: render_metric_card(p)),
-        ("pipeline.png", lambda p: render_pipeline_card(p)),
-        ("provenance.png", lambda p: render_provenance_card(p)),
-    ]
-
-    shot_dur = 3.2
-    active_dur = max(duration - 3.5, 3.2)
-    num_shots = int(active_dur / shot_dur)
+    n = len(sections)
+    section_dur = (duration - 3.5) / max(n, 1)
     clips = []
 
-    for idx in range(num_shots):
-        card_name, render_fn = card_renderers[idx % len(card_renderers)]
-        img_path = str(out_dir / f"shot_{idx+1}_{card_name}")
+    corners = ["tr", "tr", "tr", "tr"]  # Top-right for all sections
 
-        try:
-            if card_name == "terminal.png":
-                render_fn(img_path, "Production Kernel")
-            else:
-                render_fn(img_path)
+    for idx in range(min(n, len(_SECTION_METRICS))):
+        value, label, accent = _SECTION_METRICS[idx]
+        png_path = str(out_dir / f"corner_badge_{idx + 1}.png")
 
-            start_t = 3.5 + (idx * shot_dur)
-            dur = max(shot_dur - 0.1, 0.5)
+        render_corner_metric(
+            png_path,
+            value=value,
+            label=label,
+            accent_color=accent,
+            corner=corners[idx % len(corners)],
+        )
 
-            card_clip = _set_dur(_set_start(_set_pos(
-                ImageClip(img_path),
-                ("center", 230)
-            ), start_t), dur)
+        start_t = 3.5 + (idx * section_dur) + 1.2   # Appears 1.2s into section
+        badge_dur = max(section_dur - 2.0, 1.5)
 
-            if hasattr(card_clip, "crossfadein"):
-                card_clip = card_clip.crossfadein(0.2).crossfadeout(0.2)
+        badge_clip = _set_dur(_set_start(ImageClip(png_path), start_t), badge_dur)
+        if hasattr(badge_clip, "crossfadein"):
+            badge_clip = badge_clip.crossfadein(0.5).crossfadeout(0.5)
 
-            clips.append(card_clip)
-        except Exception as err:
-            logger.warning("visuals.shot_render_failed", shot=idx, error=str(err))
+        clips.append(badge_clip)
 
     return clips

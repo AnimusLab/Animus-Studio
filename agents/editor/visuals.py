@@ -318,3 +318,119 @@ def render_provenance_card(output_path: str) -> str:
 
     img.save(output_path, "PNG")
     return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  CINEMATIC HUD OVERLAYS — Broadcast lower-thirds and corner badges
+#  These replace the full-screen opaque cards.
+#  Coverage: lower-third ≤18% of frame height, corner badges ≤8%.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def render_lower_third(
+    output_path: str,
+    title: str,
+    subtitle: str = "",
+    accent_color: str = "#00f0ff",
+    w: int = 1920,
+    h: int = 1080,
+) -> str:
+    """
+    Renders a broadcast-style lower-third HUD strip as a transparent RGBA PNG.
+    Height: ~18% of frame (190px). Semi-transparent dark gradient bottom strip.
+    Left accent bar + large title + small subtitle. Background is FULLY visible above.
+    """
+    strip_h = 185
+    fade_h  = 60
+    accent_w = 6
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    # Gradient fade zone above strip (transparent -> semi-opaque)
+    for dy in range(fade_h):
+        alpha = int(145 * (dy / fade_h))
+        draw.rectangle(
+            [(0, h - strip_h - fade_h + dy), (w, h - strip_h - fade_h + dy + 1)],
+            fill=(0, 0, 0, alpha),
+        )
+
+    # Solid semi-transparent strip
+    draw.rectangle([(0, h - strip_h), (w, h)], fill=(0, 0, 0, 172))
+
+    # Left accent bar
+    r_a = int(accent_color[1:3], 16)
+    g_a = int(accent_color[3:5], 16)
+    b_a = int(accent_color[5:7], 16)
+    draw.rectangle([(0, h - strip_h), (accent_w, h)], fill=(r_a, g_a, b_a, 255))
+
+    # Title text
+    try:
+        f_title = ImageFont.truetype(r"C:\Windows\Fonts\arialbd.ttf", 42)
+    except Exception:
+        f_title = ImageFont.load_default()
+    draw.text((accent_w + 30, h - strip_h + 26), title, fill=(255, 255, 255, 240), font=f_title)
+
+    # Subtitle
+    if subtitle:
+        try:
+            f_sub = ImageFont.truetype(r"C:\Windows\Fonts\arial.ttf", 26)
+        except Exception:
+            f_sub = ImageFont.load_default()
+        draw.text(
+            (accent_w + 32, h - strip_h + 82),
+            subtitle,
+            fill=(r_a, g_a, b_a, 200),
+            font=f_sub,
+        )
+
+    # Right watermark
+    try:
+        f_wm = ImageFont.truetype(r"C:\Windows\Fonts\arialbd.ttf", 20)
+    except Exception:
+        f_wm = ImageFont.load_default()
+    draw.text((w - 220, h - strip_h + 26), "ANIMUS STUDIO", fill=(r_a, g_a, b_a, 155), font=f_wm)
+
+    img.save(output_path, "PNG")
+    return output_path
+
+
+def render_corner_metric(
+    output_path: str,
+    value: str,
+    label: str,
+    accent_color: str = "#ffcc00",
+    corner: str = "tr",
+    w: int = 1920,
+    h: int = 1080,
+) -> str:
+    """Renders a small glassy corner metric badge as a transparent RGBA PNG."""
+    badge_w, badge_h = 260, 100
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    pad = 24
+    bx = pad if corner.endswith("l") else w - badge_w - pad
+    by = pad if corner.startswith("t") else h - badge_h - pad
+
+    r_a = int(accent_color[1:3], 16)
+    g_a = int(accent_color[3:5], 16)
+    b_a = int(accent_color[5:7], 16)
+
+    draw.rounded_rectangle(
+        [(bx, by), (bx + badge_w, by + badge_h)],
+        radius=12,
+        fill=(0, 0, 0, 150),
+        outline=(r_a, g_a, b_a, 200),
+        width=2,
+    )
+
+    try:
+        f_val = ImageFont.truetype(r"C:\Windows\Fonts\arialbd.ttf", 36)
+        f_lbl = ImageFont.truetype(r"C:\Windows\Fonts\arial.ttf", 17)
+    except Exception:
+        f_val = f_lbl = ImageFont.load_default()
+
+    draw.text((bx + 18, by + 10), value, fill=accent_color, font=f_val)
+    draw.text((bx + 18, by + 58), label, fill=(200, 200, 200, 220), font=f_lbl)
+
+    img.save(output_path, "PNG")
+    return output_path
