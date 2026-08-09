@@ -15,13 +15,13 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 
-def _resolve_font(bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+def _resolve_font(size: int = 22, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     win_fonts = r"C:\Windows\Fonts"
     font_name = "consola.ttf" if not bold else "consolab.ttf"
     font_path = os.path.join(win_fonts, font_name)
     if os.path.exists(font_path):
         try:
-            return ImageFont.truetype(font_path, 22)
+            return ImageFont.truetype(font_path, size)
         except Exception:
             pass
     return ImageFont.load_default()
@@ -38,12 +38,11 @@ def render_terminal_card(output_path: str, section_title: str = "Production Syst
 
     # 2. Window Header Bar
     draw.rectangle([(0, 0), (W, 44)], fill="#1a2236")
-    # Red, Yellow, Green Window Dots
     draw.ellipse([(20, 14), (32, 26)], fill="#ff5f56")
     draw.ellipse([(40, 14), (52, 26)], fill="#ffbd2e")
     draw.ellipse([(60, 14), (72, 26)], fill="#27c93f")
 
-    font = _resolve_font()
+    font = _resolve_font(20, bold=False)
     draw.text((90, 12), f"bash - animus@production: {section_title.lower()}", fill="#a0aec0", font=font)
 
     # 3. Terminal Log Output Lines
@@ -60,8 +59,7 @@ def render_terminal_card(output_path: str, section_title: str = "Production Syst
     start_y = 70
     for prefix, color, text in lines:
         draw.text((30, start_y), prefix, fill=color, font=font)
-        # Offset for text body
-        prefix_width = len(prefix) * 14
+        prefix_width = len(prefix) * 12
         draw.text((30 + prefix_width, start_y), text, fill="#e2e8f0", font=font)
         start_y += 65
 
@@ -70,32 +68,38 @@ def render_terminal_card(output_path: str, section_title: str = "Production Syst
 
 
 def render_architecture_card(output_path: str, section_title: str = "") -> str:
-    """Renders a glowing 4-node system architecture diagram."""
+    """Renders a glowing 4-node system architecture diagram with perfectly padded text boxes."""
     W, H = 1200, 600
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    font = _resolve_font(bold=True)
+    font_header = _resolve_font(22, bold=True)
+    font_title = _resolve_font(18, bold=True)
+    font_sub = _resolve_font(15, bold=False)
 
     # Canvas Frame
     draw.rectangle([(0, 0), (W, H)], fill="#0f1420", outline="#00f0ff", width=2)
-    draw.text((40, 25), "// ANIMUSLAB SYSTEM ARCHITECTURE PROTOCOL", fill="#00f0ff", font=font)
+    draw.text((40, 25), "// ANIMUSLAB SYSTEM ARCHITECTURE PROTOCOL", fill="#00f0ff", font=font_header)
 
+    # Node boxes: 240px wide each, 290px step
     nodes = [
-        (40, 220, "USER PROMPT", "Raw Input Intent", "#3182ce"),
-        (330, 220, "RUNTIME KERNEL", "Deterministic State", "#00f0ff"),
-        (620, 220, "LLM ENGINE", "Nondeterministic Model", "#e53e3e"),
-        (910, 220, "PROVENANCE LOG", "Audit Record", "#38a169"),
+        (35, 210, "USER PROMPT", "Raw Input Intent", "#3182ce"),
+        (325, 210, "RUNTIME KERNEL", "Deterministic State", "#00f0ff"),
+        (615, 210, "LLM ENGINE", "Nondeterministic Model", "#e53e3e"),
+        (905, 210, "PROVENANCE LOG", "Audit Record", "#38a169"),
     ]
 
     for x, y, label, sub, color in nodes:
-        draw.rectangle([(x, y), (x + 230, y + 160)], fill="#1a2236", outline=color, width=3)
-        draw.text((x + 15, y + 40), label, fill=color, font=font)
-        font_sub = _resolve_font(bold=False)
-        draw.text((x + 15, y + 90), sub, fill="#a0aec0", font=font_sub)
+        draw.rectangle([(x, y), (x + 240, y + 170)], fill="#1a2236", outline=color, width=3)
+        draw.text((x + 18, y + 38), label, fill=color, font=font_title)
+        draw.text((x + 18, y + 95), sub, fill="#a0aec0", font=font_sub)
 
     # Connecting Arrows
-    arrows = [(270, 300, 330, 300), (560, 300, 620, 300), (850, 300, 910, 300)]
+    arrows = [
+        (275, 295, 325, 295),
+        (565, 295, 615, 295),
+        (855, 295, 905, 295),
+    ]
     for x1, y1, x2, y2 in arrows:
         draw.line([(x1, y1), (x2, y2)], fill="#00f0ff", width=4)
         draw.polygon([(x2 - 10, y2 - 8), (x2, y2), (x2 - 10, y2 + 8)], fill="#00f0ff")
@@ -110,7 +114,7 @@ def render_code_card(output_path: str, section_title: str = "") -> str:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    font = _resolve_font()
+    font = _resolve_font(20, bold=False)
 
     draw.rectangle([(0, 0), (W, H)], fill="#0f1420", outline="#00f0ff", width=2)
     draw.rectangle([(0, 0), (W, 44)], fill="#1a2236")
@@ -137,27 +141,28 @@ def render_code_card(output_path: str, section_title: str = "") -> str:
 
 
 def render_metric_card(output_path: str, section_title: str = "") -> str:
-    """Renders a telemetric callout metric card."""
+    """Renders a telemetric callout metric card with tight vertical spacing."""
     W, H = 1200, 600
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    font_large = _resolve_font(bold=True)
-    font_sub = _resolve_font(bold=False)
+    font_percent = _resolve_font(72, bold=True)
+    font_title = _resolve_font(24, bold=True)
+    font_sub = _resolve_font(18, bold=False)
 
     draw.rectangle([(0, 0), (W, H)], fill="#0f1420", outline="#00f0ff", width=2)
 
     # Box 1
     draw.rectangle([(80, 100), (540, 500)], fill="#1a2236", outline="#00f0ff", width=3)
-    draw.text((120, 180), "0%", fill="#ffea00", font=font_large)
-    draw.text((120, 320), "SILENT STATE DRIFT", fill="#ffffff", font=font_large)
-    draw.text((120, 380), "Deterministic Runtime Guarantee", fill="#a0aec0", font=font_sub)
+    draw.text((120, 150), "0%", fill="#ffea00", font=font_percent)
+    draw.text((120, 260), "SILENT STATE DRIFT", fill="#ffffff", font=font_title)
+    draw.text((120, 320), "Deterministic Runtime Guarantee", fill="#a0aec0", font=font_sub)
 
     # Box 2
     draw.rectangle([(660, 100), (1120, 500)], fill="#1a2236", outline="#38a169", width=3)
-    draw.text((700, 180), "100%", fill="#38a169", font=font_large)
-    draw.text((700, 320), "AUDIT TRACEABILITY", fill="#ffffff", font=font_large)
-    draw.text((700, 380), "Cryptographic MissionRecord", fill="#a0aec0", font=font_sub)
+    draw.text((700, 150), "100%", fill="#38a169", font=font_percent)
+    draw.text((700, 260), "AUDIT TRACEABILITY", fill="#ffffff", font=font_title)
+    draw.text((700, 320), "Cryptographic MissionRecord", fill="#a0aec0", font=font_sub)
 
     img.save(output_path, "PNG")
     return output_path

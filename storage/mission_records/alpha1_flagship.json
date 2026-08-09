@@ -258,6 +258,46 @@
       "event_type": "replay.completed",
       "timestamp": 1785946874.5413947,
       "detail": "Replay execution trace finished"
+    },
+    {
+      "event_type": "replay.started",
+      "timestamp": 1785948018.6538749,
+      "detail": "Replaying mission from stage: 'editor'"
+    },
+    {
+      "event_type": "editor.replay_started",
+      "timestamp": 1785948018.6538749,
+      "detail": ""
+    },
+    {
+      "event_type": "editor.replay_completed",
+      "timestamp": 1785948311.0017023,
+      "detail": "Video: D:\\Animus-Studio\\outputs\\job_alpha1_1785740691\\final.mp4"
+    },
+    {
+      "event_type": "thumbnail.replay_started",
+      "timestamp": 1785948311.0017023,
+      "detail": ""
+    },
+    {
+      "event_type": "thumbnail.replay_completed",
+      "timestamp": 1785948311.041025,
+      "detail": "Thumbnail: D:\\Animus-Studio\\outputs\\job_alpha1_1785740691\\thumbnail.png"
+    },
+    {
+      "event_type": "publish.replay_started",
+      "timestamp": 1785948311.041025,
+      "detail": ""
+    },
+    {
+      "event_type": "publish.replay_completed",
+      "timestamp": 1785948315.1488197,
+      "detail": "Results: {'youtube': {'status': 'failed', 'error': '[WinError 1225] The remote computer refused the network connection'}}"
+    },
+    {
+      "event_type": "replay.completed",
+      "timestamp": 1785948315.1488197,
+      "detail": "Replay execution trace finished"
     }
   ],
   "artifacts": {
@@ -334,5 +374,5 @@
     }
   },
   "created_at": 1785741544.6435335,
-  "completed_at": 1785946874.5413947
+  "completed_at": 1785948315.1488197
 }

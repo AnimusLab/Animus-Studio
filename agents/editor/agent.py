@@ -242,7 +242,7 @@ class EditorAgent(BaseAgent):
                 font=font_regular,
             )
 
-        # ── 8. Top Right Watermark (y=90, safe margin) ───────────
+        # ── 8. Top Right Watermark (y=130, safe margin) ───────────
         watermark_clip = _set_dur(_set_pos(_set_opacity(
             TextClip(
                 text="ANIMUS STUDIO",
@@ -251,7 +251,7 @@ class EditorAgent(BaseAgent):
                 font=font_bold,
             ),
             0.6
-        ), (W - 280, 90)), duration)
+        ), (W - 280, 130)), duration)
 
         # ── 9. Composite Layers ───────────────────────────────────
         layers = [
@@ -266,13 +266,14 @@ class EditorAgent(BaseAgent):
         ]
         video = _set_audio(CompositeVideoClip(layers, size=(W, H)), audio)
 
-        # ── 10. Render Final MP4 ──────────────────────────────────
+        # ── 10. Render Final MP4 (High Quality 1080p) ────────────
         video.write_videofile(
             output_path,
             fps=fps,
             codec="libx264",
             audio_codec="aac",
-            preset="ultrafast",
+            preset="medium",
+            bitrate="8000k",
             threads=4,
             logger=None,
         )
@@ -288,7 +289,7 @@ def _build_section_headers(
     w: int,
     font: str | None,
 ) -> list:
-    """Renders top section headers placed safely at y=90 (no top clipping)."""
+    """Renders top section headers placed safely at y=130 (no top clipping)."""
     try:
         from moviepy import TextClip
     except ImportError:
@@ -313,7 +314,7 @@ def _build_section_headers(
                 color="#00f0ff",
                 font=font,
             ),
-            (100, 90)
+            (100, 130)
         ), start_t), max(slice_dur, 0.5))
 
         if hasattr(header_clip, "crossfadein"):
