@@ -1,14 +1,14 @@
 """
 agents/editor/cinematic.py
 
-Cinematic Background Scene Generator & Ken Burns Motion Zoom Engine.
-Generates 1920x1080 high-production-value background scene visuals per topic:
+Cinematic Background Scene Generator Engine.
+Generates 1920x1080 high-production-value smooth cinematic background scene visuals per topic:
   1. Section 1: Dark server room with glowing red warning light vignettes
-  2. Section 2: Holographic blue radial grid canvas with cyan particle nodes
-  3. Section 3: Cyber matrix background with glowing teal code streams
+  2. Section 2: Holographic blue radial canvas with soft cyan ambient light
+  3. Section 3: Deep teal cyber matrix glow backdrop
   4. Section 4: Telemetric emerald/gold audit shield backdrop
 
-Applies slow Ken Burns camera motion zoom (1.0x -> 1.06x) so the background is NEVER static.
+Pure smooth atmospheric gradients and soft light spots — zero harsh grid lines.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 
 def render_cinematic_bg(output_path: str, style_type: str = "server_alert") -> str:
-    """Renders a 1920x1080 cinematic dark tech background image."""
+    """Renders a 1920x1080 smooth cinematic dark tech background image."""
     W, H = 1920, 1080
     img = Image.new("RGB", (W, H), color="#080c14")
     draw = ImageDraw.Draw(img)
@@ -51,7 +51,7 @@ def render_cinematic_bg(output_path: str, style_type: str = "server_alert") -> s
         img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
     elif style_type == "code_matrix":
-        # Deep teal matrix grid
+        # Deep teal matrix canvas
         for y in range(H):
             r = int(6 + (y / H) * 8)
             g = int(20 + (y / H) * 32)
@@ -75,14 +75,6 @@ def render_cinematic_bg(output_path: str, style_type: str = "server_alert") -> s
         odraw = ImageDraw.Draw(overlay)
         odraw.ellipse([(W // 2 - 400, -100), (W // 2 + 400, 700)], fill=(56, 161, 105, 40))
         img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
-
-    # Add subtle grid lines for tech depth
-    draw_grid = ImageDraw.Draw(img)
-    grid_color = (255, 255, 255, 12)
-    for x in range(0, W, 80):
-        draw_grid.line([(x, 0), (x, H)], fill=grid_color)
-    for y in range(0, H, 80):
-        draw_grid.line([(0, y), (W, y)], fill=grid_color)
 
     img.save(output_path, "PNG")
     return output_path
