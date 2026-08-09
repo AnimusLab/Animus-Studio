@@ -1,17 +1,20 @@
 """
 agents/editor/visuals.py
 
-Cinematic Tech Visual Engine & Pillow-Padded Text Renderer for EditorAgent.
-Renders high-end 1080p visual assets:
-  1. Zero-clipping Pillow text overlays (Headers, Watermark, Intro Badges)
-  2. Glassmorphic Cards with Neon Cyan/Purple Gradients & Rounded Corners
-  3. Dynamic Terminal Window, Architecture Diagrams, Code Blocks & Telemetry Cards
-  4. Fixes all typos (e.g. 'Reliability')
+Cinematic Visual Card Engine for EditorAgent.
+Renders 8 distinct high-production-value visual cards:
+  1. Terminal Card (Bash execution log)
+  2. Architecture Card (4-node protocol flow diagram)
+  3. Code Card (Python kernel governance lock snippet)
+  4. Metric Card (0% drift / 100% audit telemetry)
+  5. Callout Card (High-impact quote banner)
+  6. Comparison Card (Nondeterministic LLM vs Governed Kernel)
+  7. Pipeline Card (5-stage mission pipeline flow)
+  8. Provenance Card (Cryptographic audit hash signature)
 """
 from __future__ import annotations
 
 import os
-import textwrap
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
@@ -36,10 +39,9 @@ def render_padded_text_png(
     bold: bool = True,
     bg_color: tuple[int, int, int, int] = (0, 0, 0, 0),
 ) -> str:
-    """Renders a text string into a transparent PNG with safe top/bottom padding to prevent font clipping."""
+    """Renders text into a transparent PNG with safe padding to prevent font clipping."""
     font = _resolve_font(size=font_size, bold=bold)
 
-    # Temporary canvas to measure exact text bounding box
     dummy = Image.new("RGBA", (100, 100))
     dummy_draw = ImageDraw.Draw(dummy)
     bbox = dummy_draw.textbbox((0, 0), text, font=font)
@@ -50,26 +52,21 @@ def render_padded_text_png(
     img = Image.new("RGBA", (max(text_w, 200), max(text_h, 60)), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Render text with 20px top padding (prevents top ascender clipping)
     draw.text((20, 20 - bbox[1]), text, fill=color, font=font)
     img.save(output_path, "PNG")
     return output_path
 
 
 def render_terminal_card(output_path: str, section_title: str = "Production System") -> str:
-    """Renders a glassmorphic terminal window showing silent production failure logs."""
-    W, H = 1240, 620
+    """Renders a glassmorphic terminal window with production failure logs."""
+    W, H = 1240, 560
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # 1. Dark Glass Card Canvas (#0d1322 with rounded corners)
     draw.rounded_rectangle([(0, 0), (W, H)], radius=20, fill="#0d1322", outline="#00f0ff", width=3)
-
-    # 2. Window Header Bar
     draw.rounded_rectangle([(0, 0), (W, 50)], radius=20, fill="#161f36")
-    draw.rectangle([(0, 30), (W, 50)], fill="#161f36")  # Fill bottom rounded corners of header
+    draw.rectangle([(0, 30), (W, 50)], fill="#161f36")
 
-    # Red, Yellow, Green Window Controls
     draw.ellipse([(24, 17), (38, 31)], fill="#ff5f56")
     draw.ellipse([(48, 17), (62, 31)], fill="#ffbd2e")
     draw.ellipse([(72, 17), (86, 31)], fill="#27c93f")
@@ -77,31 +74,30 @@ def render_terminal_card(output_path: str, section_title: str = "Production Syst
     font_term = _resolve_font(20, bold=False)
     draw.text((110, 14), f"bash - animus@production: {section_title.lower()}", fill="#a0aec0", font=font_term)
 
-    # 3. Terminal Log Lines
     lines = [
         ("animus@kernel:~$ ", "#00f0ff", "deploy --environment=production --target=llm_agent"),
         ("[INFO 10:42:01] ", "#27c93f", "Agent container started with ID: container_88f921"),
-        ("[INFO 10:42:15] ", "#27c93f", "Prompt evaluation passed (staging verification score: 0.98)"),
-        ("[WARN 11:02:44] ", "#ffbd2e", "SILENT STATE DRIFT DETECTED: Model output context variance > 45%"),
-        ("[ERROR 11:02:45] ", "#ff5f56", "NON-DETERMINISTIC BEHAVIOR: LLM changed decision without code mutation"),
-        ("[CRIT 11:02:45] ", "#ff5f56", "FAIL: System boundary missing kernel execution wrapper!"),
+        ("[INFO 10:42:15] ", "#27c93f", "Prompt evaluation passed (staging score: 0.98)"),
+        ("[WARN 11:02:44] ", "#ffbd2e", "SILENT STATE DRIFT DETECTED: Context variance > 45%"),
+        ("[ERROR 11:02:45] ", "#ff5f56", "NON-DETERMINISTIC BEHAVIOR: LLM output mutated"),
+        ("[CRIT 11:02:45] ", "#ff5f56", "FAIL: System boundary missing kernel wrapper!"),
         ("animus@kernel:~$ ", "#00f0ff", "governance doctor --inspect-failure"),
     ]
 
-    start_y = 80
+    start_y = 75
     for prefix, color, text in lines:
         draw.text((35, start_y), prefix, fill=color, font=font_term)
         prefix_width = len(prefix) * 12
         draw.text((35 + prefix_width, start_y), text, fill="#e2e8f0", font=font_term)
-        start_y += 70
+        start_y += 65
 
     img.save(output_path, "PNG")
     return output_path
 
 
-def render_architecture_card(output_path: str, section_title: str = "") -> str:
-    """Renders a glowing 4-node system architecture diagram with 100% padded text boxes."""
-    W, H = 1240, 620
+def render_architecture_card(output_path: str) -> str:
+    """Renders a glowing 4-node system architecture diagram."""
+    W, H = 1240, 560
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
@@ -109,16 +105,14 @@ def render_architecture_card(output_path: str, section_title: str = "") -> str:
     font_title = _resolve_font(18, bold=True)
     font_sub = _resolve_font(15, bold=False)
 
-    # Outer Glass Canvas
     draw.rounded_rectangle([(0, 0), (W, H)], radius=20, fill="#0d1322", outline="#00f0ff", width=3)
     draw.text((40, 25), "// ANIMUSLAB SYSTEM ARCHITECTURE PROTOCOL", fill="#00f0ff", font=font_header)
 
-    # 4 Node Boxes (250px wide each, 295px step)
     nodes = [
-        (35, 210, "USER PROMPT", "Raw Input Intent", "#3182ce"),
-        (330, 210, "RUNTIME KERNEL", "Deterministic State", "#00f0ff"),
-        (625, 210, "LLM ENGINE", "Nondeterministic Model", "#e53e3e"),
-        (920, 210, "PROVENANCE LOG", "Audit Record", "#38a169"),
+        (35, 180, "USER PROMPT", "Raw Input Intent", "#3182ce"),
+        (330, 180, "RUNTIME KERNEL", "Deterministic State", "#00f0ff"),
+        (625, 180, "LLM ENGINE", "Nondeterministic Model", "#e53e3e"),
+        (920, 180, "PROVENANCE LOG", "Audit Record", "#38a169"),
     ]
 
     for x, y, label, sub, color in nodes:
@@ -126,11 +120,10 @@ def render_architecture_card(output_path: str, section_title: str = "") -> str:
         draw.text((x + 18, y + 38), label, fill=color, font=font_title)
         draw.text((x + 18, y + 95), sub, fill="#a0aec0", font=font_sub)
 
-    # Connecting Arrows
     arrows = [
-        (285, 295, 330, 295),
-        (580, 295, 625, 295),
-        (875, 295, 920, 295),
+        (285, 265, 330, 265),
+        (580, 265, 625, 265),
+        (875, 265, 920, 265),
     ]
     for x1, y1, x2, y2 in arrows:
         draw.line([(x1, y1), (x2, y2)], fill="#00f0ff", width=4)
@@ -140,9 +133,9 @@ def render_architecture_card(output_path: str, section_title: str = "") -> str:
     return output_path
 
 
-def render_code_card(output_path: str, section_title: str = "") -> str:
+def render_code_card(output_path: str) -> str:
     """Renders a syntax-highlighted code block card."""
-    W, H = 1240, 620
+    W, H = 1240, 560
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
@@ -156,7 +149,7 @@ def render_code_card(output_path: str, section_title: str = "") -> str:
     code_lines = [
         ("@kernel.governed(name='production_pipeline')", "#d69e2e"),
         ("async def run_governed_agent(mission_spec: MissionSpec):", "#4299e1"),
-        ("    # 1. State lock context", "#718096"),
+        ("    # 1. Acquire deterministic state lock", "#718096"),
         ("    context = await runtime.acquire_state_lock(mission_spec)", "#e2e8f0"),
         ("    # 2. Execute LLM decision with audit capture", "#718096"),
         ("    result = await llm.chat_with_provenance(context)", "#e2e8f0"),
@@ -164,38 +157,164 @@ def render_code_card(output_path: str, section_title: str = "") -> str:
         ("    return await MissionRecord.commit(result)", "#38a169"),
     ]
 
-    start_y = 80
+    start_y = 75
     for text, color in code_lines:
         draw.text((45, start_y), text, fill=color, font=font)
-        start_y += 62
+        start_y += 58
 
     img.save(output_path, "PNG")
     return output_path
 
 
-def render_metric_card(output_path: str, section_title: str = "") -> str:
-    """Renders a telemetric callout metric card with tight vertical spacing."""
-    W, H = 1240, 620
+def render_metric_card(output_path: str) -> str:
+    """Renders telemetric callout metric cards."""
+    W, H = 1240, 560
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    font_percent = _resolve_font(76, bold=True)
+    font_percent = _resolve_font(72, bold=True)
     font_title = _resolve_font(24, bold=True)
     font_sub = _resolve_font(18, bold=False)
 
     draw.rounded_rectangle([(0, 0), (W, H)], radius=20, fill="#0d1322", outline="#00f0ff", width=3)
 
-    # Box 1
-    draw.rounded_rectangle([(80, 100), (560, 520)], radius=16, fill="#161f36", outline="#00f0ff", width=3)
-    draw.text((120, 150), "0%", fill="#ffea00", font=font_percent)
-    draw.text((120, 260), "SILENT STATE DRIFT", fill="#ffffff", font=font_title)
-    draw.text((120, 320), "Deterministic Runtime Guarantee", fill="#a0aec0", font=font_sub)
+    draw.rounded_rectangle([(80, 80), (560, 480)], radius=16, fill="#161f36", outline="#00f0ff", width=3)
+    draw.text((120, 130), "0%", fill="#ffea00", font=font_percent)
+    draw.text((120, 240), "SILENT STATE DRIFT", fill="#ffffff", font=font_title)
+    draw.text((120, 300), "Deterministic Runtime Guarantee", fill="#a0aec0", font=font_sub)
 
-    # Box 2
-    draw.rounded_rectangle([(680, 100), (1160, 520)], radius=16, fill="#161f36", outline="#38a169", width=3)
-    draw.text((720, 150), "100%", fill="#38a169", font=font_percent)
-    draw.text((720, 260), "AUDIT TRACEABILITY", fill="#ffffff", font=font_title)
-    draw.text((720, 320), "Cryptographic MissionRecord", fill="#a0aec0", font=font_sub)
+    draw.rounded_rectangle([(680, 80), (1160, 480)], radius=16, fill="#161f36", outline="#38a169", width=3)
+    draw.text((720, 130), "100%", fill="#38a169", font=font_percent)
+    draw.text((720, 240), "AUDIT TRACEABILITY", fill="#ffffff", font=font_title)
+    draw.text((720, 300), "Cryptographic MissionRecord", fill="#a0aec0", font=font_sub)
+
+    img.save(output_path, "PNG")
+    return output_path
+
+
+def render_callout_card(output_path: str) -> str:
+    """Renders a high-impact engineering quote callout card."""
+    W, H = 1240, 560
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    font_quote = _resolve_font(32, bold=True)
+    font_sub = _resolve_font(20, bold=False)
+
+    draw.rounded_rectangle([(0, 0), (W, H)], radius=20, fill="#0d1322", outline="#7928ca", width=3)
+    draw.text((60, 60), "// ENGINEERING PRINCIPLE", fill="#7928ca", font=_resolve_font(22, bold=True))
+
+    quote = '"Prompts provide user intent,\nbut only Deterministic Governance\nguarantees production reliability."'
+    draw.text((60, 150), quote, fill="#ffffff", font=font_quote)
+
+    draw.text((60, 440), "— Animus Studio Architecture Manifesto", fill="#a0aec0", font=font_sub)
+
+    img.save(output_path, "PNG")
+    return output_path
+
+
+def render_comparison_card(output_path: str) -> str:
+    """Renders a side-by-side comparison: Ungoverned LLM vs Governed Animus Kernel."""
+    W, H = 1240, 560
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    font_title = _resolve_font(22, bold=True)
+    font_body = _resolve_font(18, bold=False)
+
+    draw.rounded_rectangle([(0, 0), (W, H)], radius=20, fill="#0d1322", outline="#00f0ff", width=3)
+
+    # Left Column: Raw LLM (Red Border)
+    draw.rounded_rectangle([(60, 60), (580, 500)], radius=16, fill="#161f36", outline="#e53e3e", width=3)
+    draw.text((90, 90), "❌ RAW PROMPT AGENTS", fill="#e53e3e", font=font_title)
+    raw_points = [
+        "• Silent state drift in production",
+        "• Non-deterministic execution paths",
+        "• Zero audit provenance log",
+        "• Breaks silently on model updates",
+    ]
+    y_p = 160
+    for pt in raw_points:
+        draw.text((90, y_p), pt, fill="#e2e8f0", font=font_body)
+        y_p += 70
+
+    # Right Column: Animus Kernel (Cyan Border)
+    draw.rounded_rectangle([(660, 60), (1180, 500)], radius=16, fill="#161f36", outline="#00f0ff", width=3)
+    draw.text((690, 90), "⚡ ANIMUS DETERMINISTIC KERNEL", fill="#00f0ff", font=font_title)
+    gov_points = [
+        "• State lock contract enforcement",
+        "• Guaranteed reproducible execution",
+        "• Signed cryptographic MissionRecord",
+        "• Automatic Health Doctor repair",
+    ]
+    y_p = 160
+    for pt in gov_points:
+        draw.text((690, y_p), pt, fill="#e2e8f0", font=font_body)
+        y_p += 70
+
+    img.save(output_path, "PNG")
+    return output_path
+
+
+def render_pipeline_card(output_path: str) -> str:
+    """Renders a 5-stage mission execution pipeline flow."""
+    W, H = 1240, 560
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    font_title = _resolve_font(20, bold=True)
+    font_sub = _resolve_font(14, bold=False)
+
+    draw.rounded_rectangle([(0, 0), (W, H)], radius=20, fill="#0d1322", outline="#00f0ff", width=3)
+    draw.text((40, 30), "// ANIMUS END-TO-END ORGANISM PIPELINE", fill="#00f0ff", font=_resolve_font(22, bold=True))
+
+    stages = [
+        ("01", "RESEARCH", "#3182ce"),
+        ("02", "OUTLINE", "#805ad5"),
+        ("03", "SCRIPT", "#dd6b20"),
+        ("04", "VOICE", "#319795"),
+        ("05", "EDITOR", "#38a169"),
+    ]
+
+    for idx, (num, name, color) in enumerate(stages):
+        x = 40 + idx * 230
+        y = 180
+        draw.rounded_rectangle([(x, y), (x + 200, y + 220)], radius=14, fill="#161f36", outline=color, width=3)
+        draw.text((x + 20, y + 25), num, fill=color, font=_resolve_font(36, bold=True))
+        draw.text((x + 20, y + 100), name, fill="#ffffff", font=font_title)
+        draw.text((x + 20, y + 155), "Verified Stage", fill="#a0aec0", font=font_sub)
+
+    img.save(output_path, "PNG")
+    return output_path
+
+
+def render_provenance_card(output_path: str) -> str:
+    """Renders a cryptographic MissionRecord audit provenance card."""
+    W, H = 1240, 560
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    font_code = _resolve_font(19, bold=False)
+
+    draw.rounded_rectangle([(0, 0), (W, H)], radius=20, fill="#0d1322", outline="#38a169", width=3)
+    draw.rounded_rectangle([(0, 0), (W, 50)], radius=20, fill="#161f36")
+    draw.rectangle([(0, 30), (W, 50)], fill="#161f36")
+    draw.text((35, 14), "json - storage/mission_records/alpha1_flagship.json", fill="#38a169", font=font_code)
+
+    json_lines = [
+        ('{', '#e2e8f0'),
+        ('  "mission_id": "alpha1_flagship",', '#00f0ff'),
+        ('  "status": "COMPLETED",', '#38a169'),
+        ('  "governance": { "deterministic_lock": true, "state_drift": 0.0 },', '#d69e2e'),
+        ('  "provenance_hash": "sha256:8f92a1c07e4d8b2e3f5a...",', '#4299e1'),
+        ('  "replay_engine_ready": true', '#38a169'),
+        ('}', '#e2e8f0'),
+    ]
+
+    start_y = 80
+    for text, color in json_lines:
+        draw.text((45, start_y), text, fill=color, font=font_code)
+        start_y += 62
 
     img.save(output_path, "PNG")
     return output_path

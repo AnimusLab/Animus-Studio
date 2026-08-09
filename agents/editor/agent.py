@@ -9,7 +9,7 @@ Renders 1080p video MP4 assemblies with:
   3. Neon cyan animated progress bar (#00f0ff)
   4. Pillow-padded text overlays (Zero top/bottom font clipping)
   5. Centered intro title card
-  6. Glassmorphic Cinematic Visual Cards (Terminal, Architecture, Code, Metrics)
+  6. Rapid 3.2-Second Visual Scene Switching across 8 distinct glassmorphic templates
   7. Optional closed captions / subtitles (burn_subtitles=False by default)
 """
 from __future__ import annotations
@@ -28,6 +28,10 @@ from agents.editor.visuals import (
     render_architecture_card,
     render_code_card,
     render_metric_card,
+    render_callout_card,
+    render_comparison_card,
+    render_pipeline_card,
+    render_provenance_card,
 )
 from agents.editor.cinematic import render_cinematic_bg, render_letterbox_overlay
 
@@ -214,7 +218,7 @@ class EditorAgent(BaseAgent):
             out_dir=out_dir,
         )
 
-        # ── 6. Dynamic Visual Cards (Terminal, Architecture, Code, Metrics) ──
+        # ── 6. Rapid 3.2-Second Dynamic Visual Scene Switching (8 Templates) ─
         visual_card_clips = _build_dynamic_visual_clips(
             sections=script.get("sections", []),
             duration=duration,
@@ -245,7 +249,7 @@ class EditorAgent(BaseAgent):
             *section_clips,
             *visual_card_clips,
             watermark_clip,
-            letterbox_clip,  # Top layer cinematic scope framing
+            letterbox_clip,
         ]
         video = _set_audio(CompositeVideoClip(layers, size=(W, H)), audio)
 
@@ -347,7 +351,7 @@ def _build_dynamic_visual_clips(
     w: int,
     job_id: str,
 ) -> list:
-    """Renders dynamic glassmorphic visual cards centered on screen for each section topic."""
+    """Renders rapid 3.2-second visual scene cuts across 8 distinct visual card templates."""
     try:
         from moviepy import ImageClip
     except ImportError:
@@ -356,30 +360,34 @@ def _build_dynamic_visual_clips(
     out_dir = OUTPUT_DIR / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    n = max(len(sections), 1)
-    slice_dur = (duration - 3.5) / n
-    clips = []
-
     card_renderers = [
         ("terminal.png", render_terminal_card),
-        ("architecture.png", lambda p, heading="": render_architecture_card(p)),
-        ("code.png", lambda p, heading="": render_code_card(p)),
-        ("metric.png", lambda p, heading="": render_metric_card(p)),
+        ("architecture.png", lambda p: render_architecture_card(p)),
+        ("comparison.png", lambda p: render_comparison_card(p)),
+        ("code.png", lambda p: render_code_card(p)),
+        ("callout.png", lambda p: render_callout_card(p)),
+        ("metric.png", lambda p: render_metric_card(p)),
+        ("pipeline.png", lambda p: render_pipeline_card(p)),
+        ("provenance.png", lambda p: render_provenance_card(p)),
     ]
 
-    for idx in range(n):
+    shot_dur = 3.2
+    active_dur = max(duration - 3.5, 3.2)
+    num_shots = int(active_dur / shot_dur)
+    clips = []
+
+    for idx in range(num_shots):
         card_name, render_fn = card_renderers[idx % len(card_renderers)]
-        img_path = str(out_dir / card_name)
-        heading = sections[idx].get("heading", f"Section {idx + 1}") if sections else "Production System"
+        img_path = str(out_dir / f"shot_{idx+1}_{card_name}")
 
         try:
             if card_name == "terminal.png":
-                render_fn(img_path, heading)
+                render_fn(img_path, "Production Kernel")
             else:
                 render_fn(img_path)
 
-            start_t = 3.5 + (idx * slice_dur)
-            dur = max(slice_dur - 0.2, 0.5)
+            start_t = 3.5 + (idx * shot_dur)
+            dur = max(shot_dur - 0.1, 0.5)
 
             card_clip = _set_dur(_set_start(_set_pos(
                 ImageClip(img_path),
@@ -387,10 +395,10 @@ def _build_dynamic_visual_clips(
             ), start_t), dur)
 
             if hasattr(card_clip, "crossfadein"):
-                card_clip = card_clip.crossfadein(0.3).crossfadeout(0.3)
+                card_clip = card_clip.crossfadein(0.2).crossfadeout(0.2)
 
             clips.append(card_clip)
         except Exception as err:
-            logger.warning("visuals.card_render_failed", card=card_name, error=str(err))
+            logger.warning("visuals.shot_render_failed", shot=idx, error=str(err))
 
     return clips
