@@ -5,6 +5,7 @@ Input: Research brief
 Output: Full script with title, hook, body, CTA, description, tags
 """
 from __future__ import annotations
+import re
 from typing import Any
 
 from agents.base import BaseAgent, AgentContext
@@ -16,7 +17,7 @@ Return JSON with:
 {
   "title": "...",
   "hook": "First 3-5 seconds — must stop the scroll",
-  "script": "Full narration script with [PAUSE] and [EMPHASIS] markers",
+  "script": "Full spoken narration text ONLY. Do NOT include bracketed tags like [PAUSE], [EMPHASIS], or stage directions. Use natural punctuation (commas, periods, em-dashes) for pauses.",
   "sections": [{"heading": "...", "content": "..."}],
   "cta": "Call to action at the end",
   "description": "YouTube/platform description",
@@ -40,21 +41,26 @@ class ScriptAgent(BaseAgent):
         script = await self.llm_json(
             context,
             [
-            {"role": "system", "content": SCRIPT_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Topic: {research.get('topic')}\n"
-                    f"Angle: {research.get('angle')}\n"
-                    f"Audience: {research.get('audience')}\n"
-                    f"Brand tone: {brand.get('tone', 'professional')}\n"
-                    f"Style: {mission.get('style', 'informative')}\n"
-                    f"Content type: {research.get('content_type', 'short')}\n"
-                    f"Keywords: {research.get('keywords', [])}\n\n"
-                    "Write the full video script."
-                ),
-            },
-        ])
+                {"role": "system", "content": SCRIPT_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Topic: {research.get('topic')}\n"
+                        f"Angle: {research.get('angle')}\n"
+                        f"Audience: {research.get('audience')}\n"
+                        f"Brand tone: {brand.get('tone', 'professional')}\n"
+                        f"Style: {mission.get('style', 'informative')}\n"
+                        f"Content type: {research.get('content_type', 'short')}\n"
+                        f"Keywords: {research.get('keywords', [])}\n\n"
+                        "Write the full video script without any bracketed tags or stage directions."
+                    ),
+                },
+            ],
+        )
+
+        # Sanitize script text to ensure zero bracketed stage directions exist
+        if "script" in script and isinstance(script["script"], str):
+            script["script"] = re.sub(r"\[.*?\]|\(.*?\)", "", script["script"]).strip()
 
         self._log.info("script.complete", title=script.get("title"), words=script.get("word_count"))
         context.set("script", script)

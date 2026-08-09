@@ -189,7 +189,7 @@ class EditorAgent(BaseAgent):
 
         progress_bar = _set_pos(_set_dur(VideoClip(frame_function=make_progress_frame), duration), ("left", H - 10))
 
-        # ── 4. Title Intro Card (y=360-440 with safe margins) ─────
+        # ── 4. Title Intro Card (y=410-480 with safe margins) ─────
         title = script.get("title", "Animus Studio Production")
         title_clip = _set_dur(_set_pos(
             TextClip(
@@ -198,7 +198,7 @@ class EditorAgent(BaseAgent):
                 color="white",
                 font=font_bold,
             ),
-            ("center", 420)
+            ("center", 480)
         ), 3.5)
 
         brand_badge = _set_dur(_set_pos(
@@ -208,7 +208,7 @@ class EditorAgent(BaseAgent):
                 color="#00f0ff",
                 font=font_bold,
             ),
-            ("center", 350)
+            ("center", 410)
         ), 3.5)
 
         if hasattr(title_clip, "crossfadein"):
