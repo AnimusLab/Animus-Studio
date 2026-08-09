@@ -382,13 +382,6 @@ def render_lower_third(
             font=f_sub,
         )
 
-    # Right watermark
-    try:
-        f_wm = ImageFont.truetype(r"C:\Windows\Fonts\arialbd.ttf", 20)
-    except Exception:
-        f_wm = ImageFont.load_default()
-    draw.text((w - 220, h - strip_h + 26), "ANIMUS STUDIO", fill=(r_a, g_a, b_a, 155), font=f_wm)
-
     img.save(output_path, "PNG")
     return output_path
 

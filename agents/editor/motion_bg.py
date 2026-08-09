@@ -6,9 +6,9 @@ Generates ANIMATED video backgrounds — not static images. Every frame is diffe
 
 Each background is thematically tied to the video section:
   "terminal_crash"   → Scrolling red error cascade    (Section 1: The Problem)
-  "network_topology" → Animated connecting node graph  (Section 2: Architecture)
+  "lidar_radar"      → Lidar Sweep / Self-Driving Car (Section 2: Architecture & Self-Driving analogy)
   "code_stream"      → Multi-column scrolling code     (Section 3: The Solution)
-  "particle_vortex"  → Orbiting gold particle shield   (Section 4: Governance)
+  "cryptographic_ledger" → Verified Governance Chain  (Section 4: Governance & Transparency)
 
 Usage:
     path = pre_render_bg_mp4("terminal_crash", duration=15.0, output_path="bg1.mp4")
@@ -23,7 +23,7 @@ import random
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1920, 1080
 
@@ -36,7 +36,6 @@ def _font(size: int, mono: bool = True):
     key = (size, mono)
     if key in _FONT_CACHE:
         return _FONT_CACHE[key]
-    from PIL import ImageFont
     paths = (
         [
             r"C:\Windows\Fonts\consola.ttf",
@@ -148,86 +147,118 @@ def terminal_crash_bg(t: float) -> np.ndarray:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  SECTION 2 — Animated Network Topology
-#  Glowing nodes appearing, connecting with pulsing edges, data packets
-#  travelling along edges. Cyan/blue on very dark navy.
-#  Thematic link: AI agent architecture — the system design under the hood.
+#  SECTION 2 — Lidar / Radar Scanner (Autonomous Vehicle Grid)
+#  Concentric circles, rotating scanner sweep, lane indicators, and boxes
+#  with labels (CAR, PEDESTRIAN) that highlight as the sweep passes.
+#  Thematic link: Autonomous vehicles / self-driving cars narration analogy.
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Pre-compute stable node positions once (seeded so deterministic)
-_rng_nodes = random.Random(1337)
-_NODES: list[tuple[int, int]] = [
-    (_rng_nodes.randint(180, W - 180), _rng_nodes.randint(140, H - 140))
-    for _ in range(28)
+# Center coordinates
+_CX, _CY = W // 2, H // 2
+
+# Stable obstacle positions relative to center (dx, dy, width, height, label)
+_OBSTACLES = [
+    (-350, -180, 70, 110, "VEHICLE_A [V2X]"),
+    (280, -220, 60, 95,   "VEHICLE_B [ACTIVE]"),
+    (-220, 140, 30, 60,   "PEDESTRIAN_A [0.98]"),
+    (180, 200, 35, 55,    "PEDESTRIAN_B [0.94]"),
+    (-500, 80, 90, 140,   "TRUCK [DIST: 42m]"),
+    (480, 110, 55, 80,    "CYCLIST [0.91]"),
 ]
-_NODE_LABELS = [
-    "KERNEL", "AGENT", "LLM", "AUDIT", "STATE", "MEMORY",
-    "POLICY", "GUARD", "EXEC", "LOG", "MONITOR", "ROUTER",
-    "INPUT", "OUTPUT", "PLAN", "TOOL", "SANDBOX", "VERIFY",
-    "HASH", "SIGN", "REPLAY", "TRACE", "SCOPE", "SYNC",
-    "QUEUE", "LOCK", "TIMEOUT", "ROLLBACK",
-]
-# Pre-compute which nodes connect (edges)
-_rng_edges = random.Random(2024)
-_EDGES: list[tuple[int, int]] = []
-for _i in range(len(_NODES)):
-    for _j in range(_i + 1, len(_NODES)):
-        nx1, ny1 = _NODES[_i]
-        nx2, ny2 = _NODES[_j]
-        dist = math.hypot(nx2 - nx1, ny2 - ny1)
-        if dist < 310 and _rng_edges.random() < 0.45:
-            _EDGES.append((_i, _j))
 
 
-def network_topology_bg(t: float) -> np.ndarray:
-    """Animated network topology — pulsing nodes, animated data-packet edges."""
-    img = Image.new("RGB", (W, H), (3, 6, 16))
+def lidar_radar_bg(t: float) -> np.ndarray:
+    """Lidar radar sweep scanner with bounding boxes & lane indicators."""
+    img = Image.new("RGB", (W, H), (2, 8, 16))
     draw = ImageDraw.Draw(img)
-    f_tiny = _font(13, mono=True)
 
-    # Draw edges with animated data packets
-    for ei, (ni, nj) in enumerate(_EDGES):
-        x1, y1 = _NODES[ni]
-        x2, y2 = _NODES[nj]
+    f_lbl = _font(13, mono=True)
+    f_num = _font(15, mono=True)
 
-        # Edge phase unique to this edge
-        edge_phase = (t * 0.7 + ei * 0.23) % 1.0
-        # Base line colour — dim cyan
-        draw.line([(x1, y1), (x2, y2)], fill=(15, 55, 80), width=1)
+    # 1. Concentric sweep circular guides
+    for r in [120, 250, 380, 520]:
+        draw.ellipse([(_CX - r, _CY - r), (_CX + r, _CY + r)], outline=(12, 45, 65), width=1)
 
-        # Animated bright packet travelling along edge
-        px = int(x1 + (x2 - x1) * edge_phase)
-        py = int(y1 + (y2 - y1) * edge_phase)
-        pkt_r = 4
-        draw.ellipse(
-            [(px - pkt_r, py - pkt_r), (px + pkt_r, py + pkt_r)],
-            fill=(0, 210, 255),
+    # 2. Coordinate lines (crosshairs)
+    draw.line([(0, _CY), (W, _CY)], fill=(12, 45, 65), width=1)
+    draw.line([(_CX, 0), (_CX, H)], fill=(12, 45, 65), width=1)
+
+    # 3. Rotating sweep line (1.4 rad/s)
+    sweep_rad = (t * 1.3) % (2 * math.pi)
+    sx = int(_CX + 600 * math.cos(sweep_rad))
+    sy = int(_CY + 600 * math.sin(sweep_rad))
+    draw.line([(_CX, _CY), (sx, sy)], fill=(0, 220, 255, 120), width=2)
+
+    # 4. Animated sweep trail glow
+    trail_steps = 15
+    for step in range(trail_steps):
+        angle = sweep_rad - (step * 0.04)
+        alpha = int(75 * (1.0 - step / trail_steps))
+        tx = int(_CX + 600 * math.cos(angle))
+        ty = int(_CY + 600 * math.sin(angle))
+        draw.line([(_CX, _CY), (tx, ty)], fill=(0, 180, 220, alpha), width=1)
+
+    # 5. Autonomous lane boundary guides (angled vectors representing perspective)
+    draw.line([(_CX - 50, _CY + 40), (_CX - 350, H)], fill=(0, 90, 130), width=1)
+    draw.line([(_CX + 50, _CY + 40), (_CX + 350, H)], fill=(0, 90, 130), width=1)
+
+    # 6. Obstacle boxes with sweep angle illumination
+    for idx, (dx, dy, box_w, box_h, label) in enumerate(_OBSTACLES):
+        ox, oy = _CX + dx, _CY + dy
+        obs_angle = math.atan2(dy, dx)
+        if obs_angle < 0:
+            obs_angle += 2 * math.pi
+
+        # Compute sweep intersection distance
+        angle_diff = abs(sweep_rad - obs_angle)
+        if angle_diff > math.pi:
+            angle_diff = 2 * math.pi - angle_diff
+
+        # Decaying activation value based on how recently the sweep line passed
+        activation = max(0.15, 1.0 - (angle_diff * 1.5))
+
+        # Color shifts from cyan (active sweep) to dark teal (idle)
+        r_box = int(0 * activation + 10 * (1 - activation))
+        g_box = int(240 * activation + 60 * (1 - activation))
+        b_box = int(255 * activation + 90 * (1 - activation))
+        box_col = (r_box, g_box, b_box)
+
+        # Draw bounding box
+        draw.rectangle(
+            [(ox - box_w // 2, oy - box_h // 2), (ox + box_w // 2, oy + box_h // 2)],
+            outline=box_col,
+            width=2,
         )
 
-    # Draw nodes — pulsing circles
-    for idx, (nx, ny) in enumerate(_NODES):
-        pulse = 0.5 + 0.5 * math.sin(t * 1.2 + idx * 0.7)
-        r = int(6 + pulse * 5)
-        # Outer glow ring
-        glow_r = r + 8
-        draw.ellipse(
-            [(nx - glow_r, ny - glow_r), (nx + glow_r, ny + glow_r)],
-            fill=(0, 40, 70),
-        )
-        # Node core
-        draw.ellipse(
-            [(nx - r, ny - r), (nx + r, ny + r)],
-            fill=(0, 180, 240),
-        )
-        # Label
-        label = _NODE_LABELS[idx % len(_NODE_LABELS)]
-        draw.text((nx + r + 5, ny - 8), label, fill=(0, 140, 190), font=f_tiny)
+        # Draw tech crosshairs on bounding corners
+        ch = 8
+        bx1, by1 = ox - box_w // 2, oy - box_h // 2
+        bx2, by2 = ox + box_w // 2, oy + box_h // 2
+        # Top Left
+        draw.line([(bx1 - 3, by1), (bx1 + ch, by1)], fill=(0, 255, 255), width=1)
+        draw.line([(bx1, by1 - 3), (bx1, by1 + ch)], fill=(0, 255, 255), width=1)
+        # Bottom Right
+        draw.line([(bx2 + 3, by2), (bx2 - ch, by2)], fill=(0, 255, 255), width=1)
+        draw.line([(bx2, by2 + 3), (bx2, by2 - ch)], fill=(0, 255, 255), width=1)
 
-    # Subtle horizontal scan lines
+        # Label text
+        draw.text(
+            (ox - box_w // 2, oy - box_h // 2 - 20),
+            label,
+            fill=box_col,
+            font=f_lbl,
+        )
+
+    # 7. Sweep telemetry details (top left)
+    draw.text((80, 80), "LIDAR SCANNING: ACTIVE", fill=(0, 240, 255), font=f_num)
+    draw.text((80, 105), f"SWEEP_RAD: {sweep_rad:.4f} RAD", fill=(0, 180, 220), font=f_num)
+    draw.text((80, 130), f"OBJECTS DETECTED: {len(_OBSTACLES)} UNITS", fill=(0, 180, 220), font=f_num)
+
+    # Horizontal scanner grid lines
     scan = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(scan)
     for ys in range(1, H, 5):
-        sd.rectangle([(0, ys), (W, ys + 1)], fill=(0, 0, 0, 35))
+        sd.rectangle([(0, ys), (W, ys + 1)], fill=(0, 0, 0, 40))
     img = Image.alpha_composite(img.convert("RGBA"), scan).convert("RGB")
 
     return _np(img)
@@ -336,77 +367,103 @@ def code_stream_bg(t: float) -> np.ndarray:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  SECTION 4 — Particle Vortex (Governance Shield)
-#  Gold/amber particles orbiting a glowing core, forming layered rings.
-#  Thematic link: Security, deterministic governance, protection.
+#  SECTION 4 — Cryptographic Ledger Chain
+#  Glowing blocks displaying commit hashes, verification checkmarks, and
+#  active audit logs. Vertical chain link scrolling upwards.
+#  Thematic link: Transparency, accountability, and secure auditing.
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Pre-compute stable particle orbits
-_rng_p = random.Random(9999)
-_N_PARTICLES = 180
-_P_RADIUS  = [_rng_p.uniform(160, 420) for _ in range(_N_PARTICLES)]
-_P_PHASE   = [_rng_p.uniform(0, 2 * math.pi) for _ in range(_N_PARTICLES)]
-_P_SPEED   = [_rng_p.uniform(0.18, 0.55) for _ in range(_N_PARTICLES)]   # rad/s
-_P_SIZE    = [_rng_p.randint(2, 6) for _ in range(_N_PARTICLES)]
-_P_BRIGHT  = [_rng_p.uniform(0.4, 1.0) for _ in range(_N_PARTICLES)]
-_CX, _CY   = W // 2, H // 2
+# Pre-computed stable transaction logs
+_LEDGER_ITEMS = [
+    ("tx_8c2278b", "STATE_LOCK", "SUCCESS", "0.00ms", "0.0% drift"),
+    ("tx_4f009a2", "LLM_INFERENCE", "GOVERNED", "482ms", "sha256:8f2a..."),
+    ("tx_91227cc", "POLICY_CHECK", "VERIFIED", "1.25ms", "100% compliance"),
+    ("tx_7b99a01", "AUDIT_COMMIT", "COMMITTED", "12.0ms", "sig:9f23..."),
+    ("tx_3c48f2b", "STATE_ROLLBACK", "BYPASS", "0.00ms", "0.0% drift"),
+    ("tx_1a44e6d", "TELEMETRY_EMIT", "VERIFIED", "0.55ms", "active"),
+]
 
 
-def particle_vortex_bg(t: float) -> np.ndarray:
-    """Orbiting gold/amber particle rings — protective governance shield."""
-    img = Image.new("RGB", (W, H), (3, 3, 8))
+def cryptographic_ledger_bg(t: float) -> np.ndarray:
+    """Chain of cryptographic ledger blocks with status checks scrolling upward."""
+    img = Image.new("RGB", (W, H), (4, 10, 8))
     draw = ImageDraw.Draw(img)
 
-    # Core glow — layered concentric ellipses
-    for glow_r, alpha_frac in [(140, 0.06), (80, 0.12), (40, 0.22), (18, 0.5)]:
-        glow_col = (
-            int(255 * alpha_frac),
-            int(165 * alpha_frac * 0.7),
-            int(10 * alpha_frac),
-        )
-        draw.ellipse(
-            [(_CX - glow_r, _CY - glow_r), (_CX + glow_r, _CY + glow_r)],
-            fill=glow_col,
-        )
+    f_lbl = _font(15, mono=True)
+    f_num = _font(17, mono=True)
+    f_val = _font(20, mono=True)
 
-    # Orbital rings (faint guide circles)
-    for ring_r in [180, 280, 380]:
-        draw.ellipse(
-            [
-                (_CX - ring_r, _CY - ring_r * 0.38),
-                (_CX + ring_r, _CY + ring_r * 0.38),
-            ],
-            outline=(60, 45, 10),
-            width=1,
-        )
+    block_h = 130
+    block_gap = 40
+    total_h = block_h + block_gap
+    scroll_speed = 45  # px/s
+    scroll_y = (t * scroll_speed) % (len(_LEDGER_ITEMS) * total_h)
 
-    # Particles
-    for i in range(_N_PARTICLES):
-        angle = _P_PHASE[i] + _P_SPEED[i] * t
-        r = _P_RADIUS[i]
-        # Isometric orbit (elliptical projection)
-        px = _CX + r * math.cos(angle)
-        py = _CY + r * 0.38 * math.sin(angle)
-        br = _P_BRIGHT[i]
-        sz = _P_SIZE[i]
-        # Gold/amber particle colour
-        col = (
-            int(255 * br),
-            int(185 * br * 0.75),
-            int(20 * br * 0.3),
-        )
-        draw.ellipse(
-            [(px - sz, py - sz), (px + sz, py + sz)],
-            fill=col,
-        )
+    n = len(_LEDGER_ITEMS)
+    repeats = H // (n * total_h) + 3
 
-    # Slow rotation shimmer overlay
-    shimmer_phase = (t * 0.15) % 1.0
-    shimmer_y = int(shimmer_phase * H)
-    shim = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shim)
-    sd.rectangle([(0, shimmer_y - 2), (W, shimmer_y + 2)], fill=(255, 200, 60, 12))
-    img = Image.alpha_composite(img.convert("RGBA"), shim).convert("RGB")
+    # Draw vertical chain links behind blocks
+    draw.line([(W // 2, 0), (W // 2, H)], fill=(12, 45, 25), width=6)
+
+    for rep in range(repeats):
+        for idx, (tx, name, status, lat, extra) in enumerate(_LEDGER_ITEMS):
+            y = rep * n * total_h + idx * total_h - scroll_y
+            if not (-block_h <= y <= H + block_h):
+                continue
+
+            # Draw block frame (concentric transparent check blocks)
+            bx1, bx2 = W // 2 - 320, W // 2 + 320
+            by1, by2 = int(y), int(y + block_h)
+
+            # Fade block based on screen position
+            fade = max(0.12, 1.0 - abs(by1 - H * 0.5) / (H * 0.6))
+            border_alpha = int(180 * fade)
+            fill_alpha = int(95 * fade)
+
+            # Block background & borders
+            overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            odraw = ImageDraw.Draw(overlay)
+            odraw.rounded_rectangle(
+                [(bx1, by1), (bx2, by2)],
+                radius=8,
+                fill=(5, 15, 10, fill_alpha),
+                outline=(0, 204, 136, border_alpha),
+                width=2,
+            )
+            img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+            draw = ImageDraw.Draw(img)  # Refresh draw context
+
+            # Block details text
+            c_text = (int(200 * fade), int(230 * fade), int(210 * fade))
+            c_accent = (int(0 * fade), int(230 * fade), int(150 * fade))
+
+            draw.text((bx1 + 25, by1 + 18), f"LEDGER BLOCK // {tx.upper()}", fill=c_text, font=f_num)
+            draw.text((bx1 + 25, by1 + 52), f"ACTION: {name}", fill=c_text, font=f_lbl)
+            draw.text((bx1 + 25, by1 + 80), f"METRIC: {extra}", fill=c_text, font=f_lbl)
+
+            # Verification stamp (Right side)
+            draw.text((bx2 - 200, by1 + 25), f"STATUS: {status}", fill=c_accent, font=f_val)
+            draw.text((bx2 - 200, by1 + 65), f"LATENCY: {lat}", fill=c_text, font=f_lbl)
+
+            # Green check shield icon (small bounding box)
+            draw.rounded_rectangle(
+                [(bx2 - 250, by1 + 35), (bx2 - 220, by1 + 65)],
+                radius=4,
+                outline=c_accent,
+                width=2,
+            )
+            draw.text((bx2 - 243, by1 + 39), "[OK]", fill=c_accent, font=f_lbl)
+
+    # Telemetry details (top left)
+    draw.text((80, 80), "AUDITING TELEMETRY: GOVERNED", fill=(0, 204, 136), font=f_val)
+    draw.text((80, 110), "TELEMETRY HASH: SHA-256/ACTIVE", fill=(150, 180, 160), font=f_lbl)
+
+    # Horizontal scanner grid lines
+    scan = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(scan)
+    for ys in range(1, H, 6):
+        sd.rectangle([(0, ys), (W, ys + 1)], fill=(0, 0, 0, 35))
+    img = Image.alpha_composite(img.convert("RGBA"), scan).convert("RGB")
 
     return _np(img)
 
@@ -417,9 +474,9 @@ def particle_vortex_bg(t: float) -> np.ndarray:
 
 _BG_FNS = {
     "terminal_crash":   terminal_crash_bg,
-    "network_topology": network_topology_bg,
+    "network_topology": lidar_radar_bg,
     "code_stream":      code_stream_bg,
-    "particle_vortex":  particle_vortex_bg,
+    "particle_vortex":  cryptographic_ledger_bg,
 }
 
 # Mapping from section style name (used in cinematic.py) to bg type
@@ -440,12 +497,6 @@ def pre_render_bg_mp4(
     """
     Pre-renders an animated background to an MP4 file by piping frames to ffmpeg.
     Returns output_path on success, raises on failure.
-
-    Args:
-        bg_type: One of "terminal_crash", "network_topology", "code_stream", "particle_vortex"
-        duration: Length in seconds.
-        output_path: Destination .mp4 path.
-        fps: Frames per second (24 recommended).
     """
     frame_fn = _BG_FNS.get(bg_type)
     if frame_fn is None:
