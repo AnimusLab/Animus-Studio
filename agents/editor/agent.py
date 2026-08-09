@@ -6,9 +6,9 @@ Editor Agent v2 — Department: Production
 Renders 1080p video MP4 assemblies with:
   1. Dark mode background canvas (#0b0f19)
   2. Neon cyan animated progress bar (#00f0ff)
-  3. Safe-margin top header section banners (y=90, zero clipping)
-  4. Centered intro title card (y=360-440, zero clipping)
-  5. Dynamic Screen Activity (Terminal logs, Architecture diagrams, Code blocks, Telemetry cards)
+  3. Pillow-padded text overlays (Zero top/bottom font clipping)
+  4. Centered intro title card
+  5. Glassmorphic Cinematic Visual Cards (Terminal, Architecture, Code, Metrics)
   6. Optional closed captions / subtitles (burn_subtitles=False by default)
 """
 from __future__ import annotations
@@ -22,6 +22,7 @@ from typing import Any
 import structlog
 from agents.base import BaseAgent, AgentContext
 from agents.editor.visuals import (
+    render_padded_text_png,
     render_terminal_card,
     render_architecture_card,
     render_code_card,
@@ -30,18 +31,6 @@ from agents.editor.visuals import (
 
 logger = structlog.get_logger()
 OUTPUT_DIR = Path("outputs")
-
-
-def _resolve_font(font_name: str = "Arial") -> str | None:
-    win_fonts = r"C:\Windows\Fonts"
-    if os.path.exists(win_fonts):
-        if "Bold" in font_name:
-            f = os.path.join(win_fonts, "arialbd.ttf")
-        else:
-            f = os.path.join(win_fonts, "arial.ttf")
-        if os.path.exists(f):
-            return f
-    return None
 
 
 def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
@@ -165,14 +154,16 @@ class EditorAgent(BaseAgent):
                 VideoClip,
             )
 
+        out_dir = OUTPUT_DIR / job_id
+
         # ── 1. Load audio & setup 1080p canvas ──────────────────────
         audio = AudioFileClip(audio_path)
         duration = audio.duration
         W, H = 1920, 1080
         fps = 24
 
-        font_regular = _resolve_font(brand.get("font", "Arial"))
-        font_bold = _resolve_font(brand.get("font", "Arial-Bold"))
+        # Fix spelling of 'Reliability' if present in title
+        title = script.get("title", "Animus Studio Production").replace("Reliabilitv", "Reliability")
 
         # ── 2. Background Canvas (#0b0f19 dark mode) ──────────────
         bg_color = _hex_to_rgb(brand.get("primary_color", "#0b0f19"))
@@ -189,41 +180,37 @@ class EditorAgent(BaseAgent):
 
         progress_bar = _set_pos(_set_dur(VideoClip(frame_function=make_progress_frame), duration), ("left", H - 10))
 
-        # ── 4. Title Intro Card (y=410-480 with safe margins) ─────
-        title = script.get("title", "Animus Studio Production")
-        title_clip = _set_dur(_set_pos(
-            TextClip(
-                text=textwrap.fill(title, 32),
-                font_size=60,
-                color="white",
-                font=font_bold,
-            ),
-            ("center", 480)
-        ), 3.5)
+        # ── 4. Title Intro Card (Zero Clipping Pillow PNGs) ───────
+        title_png = render_padded_text_png(
+            str(out_dir / "title_intro.png"),
+            textwrap.fill(title, 30),
+            font_size=54,
+            color="white",
+            bold=True,
+        )
+        badge_png = render_padded_text_png(
+            str(out_dir / "brand_badge.png"),
+            f"// {brand.get('name', 'ANIMUSLAB ENGINEERING').upper()}",
+            font_size=26,
+            color="#00f0ff",
+            bold=True,
+        )
 
-        brand_badge = _set_dur(_set_pos(
-            TextClip(
-                text=f"// {brand.get('name', 'ANIMUSLAB ENGINEERING').upper()}",
-                font_size=26,
-                color="#00f0ff",
-                font=font_bold,
-            ),
-            ("center", 410)
-        ), 3.5)
+        title_clip = _set_dur(_set_pos(ImageClip(title_png), ("center", 460)), 3.5)
+        brand_badge = _set_dur(_set_pos(ImageClip(badge_png), ("center", 390)), 3.5)
 
         if hasattr(title_clip, "crossfadein"):
             title_clip = title_clip.crossfadein(0.4).crossfadeout(0.4)
             brand_badge = brand_badge.crossfadein(0.4).crossfadeout(0.4)
 
-        # ── 5. Safe Section Header Banners (y=90, zero clipping) ─
-        section_clips = _build_section_headers(
+        # ── 5. Safe Section Header Banners (Pillow PNGs, Zero Clipping) ─
+        section_clips = _build_section_headers_padded(
             sections=script.get("sections", []),
             duration=duration,
-            w=W,
-            font=font_bold,
+            out_dir=out_dir,
         )
 
-        # ── 6. Dynamic Screen Activity Visual Cards (Terminal, Architecture, Code, Metrics) ───
+        # ── 6. Dynamic Visual Cards (Terminal, Architecture, Code, Metrics) ──
         visual_card_clips = _build_dynamic_visual_clips(
             sections=script.get("sections", []),
             duration=duration,
@@ -231,29 +218,17 @@ class EditorAgent(BaseAgent):
             job_id=job_id,
         )
 
-        # ── 7. Subtitle Captions (Optional) ───────────────────────
-        subtitle_clips = []
-        if burn_subtitles:
-            subtitle_clips = _build_subtitle_clips(
-                text=script.get("script", script.get("body", "")),
-                duration=duration,
-                width=W,
-                color="white",
-                font=font_regular,
-            )
+        # ── 7. Top Right Watermark (Pillow PNG, Zero Clipping) ────
+        watermark_png = render_padded_text_png(
+            str(out_dir / "watermark.png"),
+            "ANIMUS STUDIO",
+            font_size=24,
+            color="#00f0ff",
+            bold=True,
+        )
+        watermark_clip = _set_dur(_set_pos(_set_opacity(ImageClip(watermark_png), 0.6), (W - 280, 80)), duration)
 
-        # ── 8. Top Right Watermark (y=130, safe margin) ───────────
-        watermark_clip = _set_dur(_set_pos(_set_opacity(
-            TextClip(
-                text="ANIMUS STUDIO",
-                font_size=24,
-                color="#00f0ff",
-                font=font_bold,
-            ),
-            0.6
-        ), (W - 280, 130)), duration)
-
-        # ── 9. Composite Layers ───────────────────────────────────
+        # ── 8. Composite Layers ───────────────────────────────────
         layers = [
             background,
             progress_bar,
@@ -261,12 +236,11 @@ class EditorAgent(BaseAgent):
             title_clip,
             *section_clips,
             *visual_card_clips,
-            *subtitle_clips,
             watermark_clip,
         ]
         video = _set_audio(CompositeVideoClip(layers, size=(W, H)), audio)
 
-        # ── 10. Render Final MP4 (High Quality 1080p) ────────────
+        # ── 9. Render Final MP4 (High Quality 1080p) ──────────────
         video.write_videofile(
             output_path,
             fps=fps,
@@ -283,17 +257,16 @@ class EditorAgent(BaseAgent):
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _build_section_headers(
+def _build_section_headers_padded(
     sections: list[dict[str, Any]],
     duration: float,
-    w: int,
-    font: str | None,
+    out_dir: Path,
 ) -> list:
-    """Renders top section headers placed safely at y=130 (no top clipping)."""
+    """Renders top section headers as Pillow PNGs placed safely at y=80 with 0% top clipping."""
     try:
-        from moviepy import TextClip
+        from moviepy import ImageClip
     except ImportError:
-        from moviepy.editor import TextClip
+        from moviepy.editor import ImageClip
 
     if not sections:
         return []
@@ -306,16 +279,17 @@ def _build_section_headers(
         heading = sec.get("heading", f"Section {idx + 1}")
         start_t = 3.5 + (idx * slice_dur)
         text_str = f"SECTION 0{idx + 1} // {heading.upper()}"
+        png_path = str(out_dir / f"header_sec_{idx+1}.png")
 
-        header_clip = _set_dur(_set_start(_set_pos(
-            TextClip(
-                text=text_str,
-                font_size=26,
-                color="#00f0ff",
-                font=font,
-            ),
-            (100, 130)
-        ), start_t), max(slice_dur, 0.5))
+        render_padded_text_png(
+            png_path,
+            text_str,
+            font_size=24,
+            color="#00f0ff",
+            bold=True,
+        )
+
+        header_clip = _set_dur(_set_start(_set_pos(ImageClip(png_path), (80, 80)), start_t), max(slice_dur, 0.5))
 
         if hasattr(header_clip, "crossfadein"):
             header_clip = header_clip.crossfadein(0.3).crossfadeout(0.3)
@@ -331,7 +305,7 @@ def _build_dynamic_visual_clips(
     w: int,
     job_id: str,
 ) -> list:
-    """Renders dynamic high-context visual cards centered on screen for each section topic."""
+    """Renders dynamic glassmorphic visual cards centered on screen for each section topic."""
     try:
         from moviepy import ImageClip
     except ImportError:
@@ -367,7 +341,7 @@ def _build_dynamic_visual_clips(
 
             card_clip = _set_dur(_set_start(_set_pos(
                 ImageClip(img_path),
-                ("center", 240)
+                ("center", 230)
             ), start_t), dur)
 
             if hasattr(card_clip, "crossfadein"):
@@ -376,44 +350,5 @@ def _build_dynamic_visual_clips(
             clips.append(card_clip)
         except Exception as err:
             logger.warning("visuals.card_render_failed", card=card_name, error=str(err))
-
-    return clips
-
-
-def _build_subtitle_clips(
-    text: str,
-    duration: float,
-    width: int,
-    color: str,
-    font: str | None,
-) -> list:
-    """Renders optional bottom subtitles."""
-    try:
-        from moviepy import TextClip
-    except ImportError:
-        from moviepy.editor import TextClip
-
-    clean_text = re.sub(r"\[.*?\]|\(.*?\)", "", text).strip()
-    words = clean_text.split()
-    if not words:
-        return []
-
-    chunk_size = 7
-    chunks = [" ".join(words[i : i + chunk_size]) for i in range(0, len(words), chunk_size)]
-    chunk_dur = duration / max(len(chunks), 1)
-
-    clips = []
-    for i, chunk in enumerate(chunks):
-        start_t = i * chunk_dur
-        txt_clip = _set_dur(_set_start(_set_pos(
-            TextClip(
-                text=chunk,
-                font_size=36,
-                color=color,
-                font=font,
-            ),
-            ("center", 900)
-        ), start_t), max(chunk_dur - 0.1, 0.4))
-        clips.append(txt_clip)
 
     return clips
