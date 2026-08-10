@@ -400,9 +400,12 @@ def render_corner_metric(
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    pad = 24
-    bx = pad if corner.endswith("l") else w - badge_w - pad
-    by = pad if corner.startswith("t") else h - badge_h - pad
+    pad_x = 24
+    bx = pad_x if corner.endswith("l") else w - badge_w - pad_x
+    if corner.startswith("t"):
+        by = 60 + pad_x  # Below top 60px letterbox bar
+    else:
+        by = h - 60 - pad_x - badge_h  # Above bottom 60px letterbox bar
 
     r_a = int(accent_color[1:3], 16)
     g_a = int(accent_color[3:5], 16)
