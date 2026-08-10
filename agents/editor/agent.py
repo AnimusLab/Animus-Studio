@@ -49,9 +49,9 @@ _SECTION_ACCENTS = ["#ff3333", "#00ccff", "#00ff88", "#ffcc00"]
 # Corner metric badges per section (value, label, accent)
 _SECTION_METRICS = [
     ("847", "Silent Failures/Day",  "#ff3333"),
-    ("0%",  "State Drift",          "#00ccff"),
-    ("100%","Audit Traceability",   "#00ff88"),
-    ("∞",   "Replay Integrity",     "#ffcc00"),
+    ("99.999%", "Object Detection", "#00ccff"),
+    ("0% Drift", "State Isolation", "#00ff88"),
+    ("100%", "Ledger Integrity",    "#ffcc00"),
 ]
 
 
@@ -239,6 +239,7 @@ class EditorAgent(BaseAgent):
             sections=sections,
             duration=duration,
             out_dir=out_dir,
+            script_text=script.get("script", ""),
         )
 
         # ── 6. Corner Metric Badges ───────────────────────────────────
@@ -378,10 +379,34 @@ async def _build_animated_bg_clips(
     return clips
 
 
+def split_script_into_sections(script_text: str, n_sections: int) -> list[str]:
+    """Cleans up prompt markers and splits the script text evenly across sections by sentence."""
+    clean_text = re.sub(r'\[[A-Z]+\]', '', script_text)
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+    
+    sentences = re.split(r'(?<=[.!?])\s+', clean_text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+    
+    if not sentences:
+        return [""] * n_sections
+        
+    n_sections = max(1, n_sections)
+    avg = len(sentences) / n_sections
+    out = []
+    last = 0.0
+    for i in range(n_sections):
+        next_boundary = int(round(last + avg))
+        part = " ".join(sentences[int(last):next_boundary])
+        out.append(part)
+        last = next_boundary
+    return out
+
+
 def _build_lower_third_clips(
     sections: list[dict[str, Any]],
     duration: float,
     out_dir: Path,
+    script_text: str = "",
 ) -> list:
     """
     Renders broadcast lower-third HUD strips for each section.
@@ -400,13 +425,22 @@ def _build_lower_third_clips(
     section_dur = (duration - 3.5) / max(n, 1)
     clips = []
 
+    script_parts = []
+    if script_text:
+        script_parts = split_script_into_sections(script_text, n)
+
     for idx, sec in enumerate(sections):
         heading = sec.get("heading", f"Section {idx + 1}")
         title_str = f"SECTION {idx + 1:02d}  //  {heading.upper()}"
 
-        # Subtitle: first sentence of content (up to ~70 chars)
-        content = sec.get("content", sec.get("narration", ""))
-        subtitle = content[:70].rsplit(" ", 1)[0] + "…" if len(content) > 70 else content
+        # Subtitle: use aligned spoken words if available, fallback to content
+        if idx < len(script_parts) and script_parts[idx]:
+            subtitle = script_parts[idx]
+        else:
+            subtitle = sec.get("content", sec.get("narration", ""))
+
+        # Format subtitle to fit lower-third layout cleanly
+        subtitle = subtitle[:85].rsplit(" ", 1)[0] + "..." if len(subtitle) > 85 else subtitle
 
         accent = _SECTION_ACCENTS[idx % len(_SECTION_ACCENTS)]
         png_path = str(out_dir / f"lower_third_{idx + 1}.png")
