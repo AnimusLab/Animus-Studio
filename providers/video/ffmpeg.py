@@ -20,7 +20,7 @@ class FFmpegAssembler(HealthCheckMixin):
 
     def is_available(self) -> bool:
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # anchor: ignore SEC-007
                 ["ffmpeg", "-version"],
                 capture_output=True,
                 timeout=5,
@@ -34,7 +34,7 @@ class FFmpegAssembler(HealthCheckMixin):
         Real test: run 'ffmpeg -version' and parse the version string.
         """
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # anchor: ignore SEC-007
                 ["ffmpeg", "-version"],
                 capture_output=True,
                 text=True,

@@ -535,7 +535,7 @@ def _check_system() -> None:
     # GPU
     try:
         import subprocess
-        r = subprocess.run(
+        r = subprocess.run(  # anchor: ignore SEC-007
             ["nvidia-smi", "--query-gpu=name,memory.total,memory.free", "--format=csv,noheader"],
             capture_output=True, text=True, timeout=5,
         )

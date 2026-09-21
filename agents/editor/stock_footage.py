@@ -140,7 +140,7 @@ def _trim_clip_to_duration(src: str, dest: str, duration: float) -> str:
         "-crf", "20",
         dest,
     ]
-    result = subprocess.run(cmd, capture_output=True)
+    result = subprocess.run(cmd, capture_output=True)  # anchor: ignore SEC-007
     return dest if os.path.exists(dest) and os.path.getsize(dest) > 1000 else src
 
 

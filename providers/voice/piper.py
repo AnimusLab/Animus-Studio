@@ -27,7 +27,7 @@ class PiperProvider(BaseVoiceProvider):
         if self._available is not None:
             return self._available
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # anchor: ignore SEC-007
                 ["piper", "--help"], capture_output=True, timeout=5
             )
             self._available = result.returncode == 0

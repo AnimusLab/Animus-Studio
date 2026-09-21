@@ -24,3 +24,11 @@ __all__ = [
     "LocalArtifactStore",
     "ArtifactCategory",
 ]
+
+# Anchor Layer 2 Runtime SDK Auto-Activation
+try:
+    import anchor.runtime
+    anchor.runtime.activate(mode="block")
+except Exception:
+    pass
+

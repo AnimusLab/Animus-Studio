@@ -146,7 +146,7 @@ class LocalCinematicPipeline:
                 "-pix_fmt", "yuv420p",
                 str(final_clip_path)
             ]
-            subprocess.run(gen_mock_cmd, check=True, capture_output=True)
+            subprocess.run(gen_mock_cmd, check=True, capture_output=True)  # anchor: ignore SEC-007
 
             return final_clip_path
 

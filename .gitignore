@@ -56,3 +56,4 @@ alembic/versions/*.pyc
 outputs/
 scratch/
 models/
+.anchor/

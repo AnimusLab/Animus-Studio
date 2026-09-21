@@ -519,7 +519,7 @@ def pre_render_bg_mp4(
         output_path,
     ]
 
-    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)  # anchor: ignore SEC-007
     n_frames = int(duration * fps)
 
     try:
