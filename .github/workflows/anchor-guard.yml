@@ -24,16 +24,12 @@ jobs:
       - name: "Set up Python Environment"
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
-          cache: "pip"
+          python-version: "3.11"
 
-      - name: "Set up Rust Toolchain"
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: "Install Anchor Kernel & Dependencies"
+      - name: "Install Anchor Audit"
         run: |
           python -m pip install --upgrade pip maturin
-          pip install .
+          pip install git+https://github.com/AnimusLab/Anchor.git
 
       - name: "Run Cryptographic Compliance Audit"
         id: anchor_scan
